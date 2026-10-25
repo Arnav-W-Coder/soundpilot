@@ -1,7 +1,7 @@
 # Demo: tracer
 
 - LLM provider: `ollama`, model `gemma4:31b-cloud`
-- Started: 2026-10-25T21:39:34.473894+00:00
+- Started: 2026-10-25T21:52:43.641341+00:00
 - FL backend: FakeFL (no real FL Studio)
 
 ## Checks
@@ -18,7 +18,7 @@
 
 ## Transcript
 
-### GET /api/status (0.0 s)
+### GET /api/status (0.01 s)
 
 ```json
 {
@@ -32,7 +32,7 @@
 }
 ```
 
-### GET /api/mix (0.0 s)
+### GET /api/mix (0.02 s)
 
 ```json
 {
@@ -138,15 +138,15 @@
      "na
 ```
 
-### POST /api/chat (1.28 s)
+### POST /api/chat (3.61 s)
 Request: `{"session_id": "tracer", "message": "turn the kick down 2 dB"}`
 
 Gemma: Proposed: Kick volume -2 dB.
 
-- tool `fl_set_track` args `{"track": "Kick", "volume_change_db": -2}` -> `{"status": "proposed", "proposal_id": "p_5f2ae8", "summary": "Kick: volume 0.0 dB -> -2.0 dB", "note": "Not applied yet: the user approves it in the SoundPilot panel."}`
-- proposal `p_5f2ae8` fl_set_track: Kick: volume 0.0 dB -> -2.0 dB (why: You asked: "turn the kick down 2 dB")
+- tool `fl_set_track` args `{"track": "Kick", "volume_change_db": -2}` -> `{"status": "proposed", "proposal_id": "p_124752", "summary": "Kick: volume 0.0 dB -> -2.0 dB", "note": "Not applied yet: the user approves it in the SoundPilot panel."}`
+- proposal `p_124752` fl_set_track: Kick: volume 0.0 dB -> -2.0 dB (why: You asked: "turn the kick down 2 dB")
 
-### GET /api/mix (0.0 s) - nothing applied before approval
+### GET /api/mix (0.01 s) - nothing applied before approval
 
 ```json
 {
@@ -252,14 +252,14 @@ Gemma: Proposed: Kick volume -2 dB.
      "na
 ```
 
-### POST /api/proposals/p_5f2ae8/apply (0.0 s)
+### POST /api/proposals/p_124752/apply (0.01 s)
 
 ```json
 {
- "proposal_id": "p_5f2ae8",
+ "proposal_id": "p_124752",
  "tool": "fl_set_track",
  "result": {
-  "change_id": "c_6edbdc72",
+  "change_id": "c_7a54774f",
   "track": {
    "index": 1,
    "name": "Kick"
@@ -280,7 +280,7 @@ Gemma: Proposed: Kick volume -2 dB.
 }
 ```
 
-### GET /api/mix (0.0 s)
+### GET /api/mix (0.01 s)
 
 ```json
 {
@@ -386,22 +386,22 @@ Gemma: Proposed: Kick volume -2 dB.
      "n
 ```
 
-### POST /api/chat (0.9 s)
+### POST /api/chat (0.95 s)
 Request: `{"session_id": "tracer", "message": "undo that"}`
 
-Gemma: Proposed: Undo Kick volume change.
+Gemma: Proposed: undo change to Kick.
 
-- tool `fl_undo` args `{}` -> `{"status": "proposed", "proposal_id": "p_687bd4", "summary": "Undo change c_6edbdc72 on Kick (volume back to 0.0 dB)", "note": "Not applied yet: the user approves it in the SoundPilot panel."}`
-- proposal `p_687bd4` fl_undo: Undo change c_6edbdc72 on Kick (volume back to 0.0 dB) (why: You asked: "undo that")
+- tool `fl_undo` args `{}` -> `{"status": "proposed", "proposal_id": "p_d035f6", "summary": "Undo change c_7a54774f on Kick (volume back to 0.0 dB)", "note": "Not applied yet: the user approves it in the SoundPilot panel."}`
+- proposal `p_d035f6` fl_undo: Undo change c_7a54774f on Kick (volume back to 0.0 dB) (why: You asked: "undo that")
 
-### POST /api/proposals/p_687bd4/apply (0.0 s)
+### POST /api/proposals/p_d035f6/apply (0.0 s)
 
 ```json
 {
- "proposal_id": "p_687bd4",
+ "proposal_id": "p_d035f6",
  "tool": "fl_undo",
  "result": {
-  "change_id": "c_6edbdc72",
+  "change_id": "c_7a54774f",
   "track": {
    "index": 1,
    "name": "Kick"

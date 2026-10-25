@@ -3,7 +3,7 @@
   "demo": "tracer",
   "llm": "vertex",
   "model": "gemma-4-26b-a4b-it-maas",
-  "started": "2026-10-25T21:39:31.743668+00:00",
+  "started": "2026-10-25T21:52:39.860046+00:00",
   "passed": true
  },
  "checks": [
@@ -74,7 +74,7 @@
    "request": "GET /api/mix",
    "body": null,
    "status": 200,
-   "seconds": 0.01,
+   "seconds": 0.0,
    "response": {
     "fl_api": 36,
     "bpm": 120.0,
@@ -517,17 +517,17 @@
    "status": 200,
    "seconds": 1.04,
    "response": {
-    "reply": "I have proposed lowering the Kick volume by 2 dB. Please approve this change in the SoundPilot panel.",
+    "reply": "I have proposed lowering the Kick volume by 2 dB. Please approve the change in the SoundPilot panel.",
     "tool_trace": [
      {
       "tool": "fl_set_track",
       "args": {
-       "volume_change_db": -2,
-       "track": "Kick"
+       "track": "kick",
+       "volume_change_db": -2
       },
       "result": {
        "status": "proposed",
-       "proposal_id": "p_bcc77e",
+       "proposal_id": "p_9db558",
        "summary": "Kick: volume 0.0 dB -> -2.0 dB",
        "note": "Not applied yet: the user approves it in the SoundPilot panel."
       }
@@ -535,11 +535,11 @@
     ],
     "proposals": [
      {
-      "proposal_id": "p_bcc77e",
+      "proposal_id": "p_9db558",
       "tool": "fl_set_track",
       "args": {
-       "volume_change_db": -2,
-       "track": "Kick"
+       "track": "kick",
+       "volume_change_db": -2
       },
       "why": "You asked: \"turn the kick down 2 dB\"",
       "status": "pending",
@@ -568,7 +568,7 @@
    "request": "GET /api/mix",
    "body": null,
    "status": 200,
-   "seconds": 0.01,
+   "seconds": 0.0,
    "response": {
     "fl_api": 36,
     "bpm": 120.0,
@@ -1003,15 +1003,15 @@
    "note": "nothing applied before approval"
   },
   {
-   "request": "POST /api/proposals/p_bcc77e/apply",
+   "request": "POST /api/proposals/p_9db558/apply",
    "body": null,
    "status": 200,
    "seconds": 0.0,
    "response": {
-    "proposal_id": "p_bcc77e",
+    "proposal_id": "p_9db558",
     "tool": "fl_set_track",
     "result": {
-     "change_id": "c_1e00be8a",
+     "change_id": "c_7dd71bbe",
      "track": {
       "index": 1,
       "name": "Kick"
@@ -1477,24 +1477,24 @@
     "message": "undo that"
    },
    "status": 200,
-   "seconds": 0.87,
+   "seconds": 0.88,
    "response": {
-    "reply": "I have proposed undoing the previous change to restore the Kick volume to 0.0 dB. Please approve this in the SoundPilot panel.",
+    "reply": "I have proposed undoing the previous change to restore the Kick volume to 0.0 dB. Please approve it in the SoundPilot panel.",
     "tool_trace": [
      {
       "tool": "fl_undo",
       "args": {},
       "result": {
        "status": "proposed",
-       "proposal_id": "p_422d41",
-       "summary": "Undo change c_1e00be8a on Kick (volume back to 0.0 dB)",
+       "proposal_id": "p_0ff461",
+       "summary": "Undo change c_7dd71bbe on Kick (volume back to 0.0 dB)",
        "note": "Not applied yet: the user approves it in the SoundPilot panel."
       }
      }
     ],
     "proposals": [
      {
-      "proposal_id": "p_422d41",
+      "proposal_id": "p_0ff461",
       "tool": "fl_undo",
       "args": {},
       "why": "You asked: \"undo that\"",
@@ -1509,7 +1509,7 @@
          "unit": "dB"
         }
        ],
-       "summary": "Undo change c_1e00be8a on Kick (volume back to 0.0 dB)"
+       "summary": "Undo change c_7dd71bbe on Kick (volume back to 0.0 dB)"
       }
      }
     ],
@@ -1518,15 +1518,15 @@
    "note": ""
   },
   {
-   "request": "POST /api/proposals/p_422d41/apply",
+   "request": "POST /api/proposals/p_0ff461/apply",
    "body": null,
    "status": 200,
    "seconds": 0.0,
    "response": {
-    "proposal_id": "p_422d41",
+    "proposal_id": "p_0ff461",
     "tool": "fl_undo",
     "result": {
-     "change_id": "c_1e00be8a",
+     "change_id": "c_7dd71bbe",
      "track": {
       "index": 1,
       "name": "Kick"

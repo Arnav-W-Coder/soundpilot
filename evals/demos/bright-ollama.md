@@ -1,7 +1,7 @@
 # Demo: bright
 
 - LLM provider: `ollama`, model `gemma4:31b-cloud`
-- Started: 2026-10-25T21:39:37.442296+00:00
+- Started: 2026-10-25T21:52:58.689155+00:00
 - FL backend: FakeFL (no real FL Studio)
 
 ## Checks
@@ -30,23 +30,23 @@
 }
 ```
 
-### POST /api/chat (3.87 s)
+### POST /api/chat (3.04 s)
 Request: `{"session_id": "bright", "message": "My mix is too bright. The exported mix is /Users/dylanvatanapradit/Downloads/soundpilot/fixtures/audio/bright.wav and my reference track is /Users/dylanvatanapradit/Downloads/soundpilot/fixtures/audio/pink.wav."}`
 
-Gemma: The mix is +5.4 dB too bright in the 5–20 kHz range compared to the reference. I have proposed a -5.4 dB cut at 8 kHz on the master track to balance this.
+Gemma: The mix is +5.4 dB too bright in the 5–20 kHz range compared to the reference. I have proposed a -5.4 dB cut on the master high EQ band at 8000 Hz.
 
 - tool `analyze_audio` args `{"path": "/Users/dylanvatanapradit/Downloads/soundpilot/fixtures/audio/bright.wav", "reference_path": "/Users/dylanvatanapradit/Downloads/soundpilot/fixtures/audio/pink.wav"}` -> `{"analysis_id": "c983a594c12e", "duration_s": 30.0, "sample_rate": 48000, "channels": 2, "integrated_lufs": -16.3, "short_term_max_lufs": -16.27}`
 - tool `diagnose_complaint` args `{"analysis_id": "c983a594c12e", "complaint": "too bright"}` -> `{"needs_clarification": false, "findings": [{"descriptor": "bright", "value": -27.41, "target": -32.81, "delta": 5.4, "unit": "dB", "triggered": true, "basis": "the reference", "summary": "+5.4 dB at 5\u201320 kHz"}], "proposed_changes": [{"tool": "fl_set_track", "args": {"track": 0, "eq_band": "hig`
-- proposal `p_69873b` fl_set_track: Master: high EQ gain 0.0 dB -> -5.4 dB, high EQ freq 7096 Hz -> 8000 Hz (why: The highs: +5.4 dB at 5–20 kHz vs the reference; cut the high EQ band on the master by 5.4 dB at 8 kHz.)
+- proposal `p_38b4f4` fl_set_track: Master: high EQ gain 0.0 dB -> -5.4 dB, high EQ freq 7096 Hz -> 8000 Hz (why: The highs: +5.4 dB at 5–20 kHz vs the reference; cut the high EQ band on the master by 5.4 dB at 8 kHz.)
 
-### POST /api/proposals/p_69873b/apply (0.0 s)
+### POST /api/proposals/p_38b4f4/apply (0.0 s)
 
 ```json
 {
- "proposal_id": "p_69873b",
+ "proposal_id": "p_38b4f4",
  "tool": "fl_set_track",
  "result": {
-  "change_id": "c_beb02733",
+  "change_id": "c_bb5cb5e3",
   "track": {
    "index": 0,
    "name": "Master"
@@ -73,9 +73,9 @@ Gemma: The mix is +5.4 dB too bright in the 5–20 kHz range compared to the ref
 }
 ```
 
-### POST /api/chat (1.84 s)
+### POST /api/chat (1.49 s)
 Request: `{"session_id": "bright", "message": "I applied it and re-exported the mix to /Users/dylanvatanapradit/Downloads/soundpilot/fixtures/audio/bright_fixed.wav. Did the brightness fix work?"}`
 
-Gemma: Yes, the fix worked. The 5–20 kHz range dropped by 3.36 dB, bringing the brightness closer to the reference.
+Gemma: Yes, the fix worked. The brightness in the 5–20 kHz range dropped by 3.36 dB, bringing it much closer to the reference.
 
 - tool `verify_fix` args `{"after_path": "/Users/dylanvatanapradit/Downloads/soundpilot/fixtures/audio/bright_fixed.wav", "before_analysis_id": "c983a594c12e", "complaint": "too bright"}` -> `{"passed": true, "after_analysis_id": "33de20df66f8", "checks": [{"descriptor": "bright", "before": -27.41, "after": -30.77, "rule": "5\u201320 kHz level, loudness-matched to before, must drop \u2265 2.70 dB (50% of the proposed -5.4 dB change); moved -3.36 dB", "passed": true}, {"descriptor": "inte`

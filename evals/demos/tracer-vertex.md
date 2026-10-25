@@ -1,7 +1,7 @@
 # Demo: tracer
 
 - LLM provider: `vertex`, model `gemma-4-26b-a4b-it-maas`
-- Started: 2026-10-25T21:39:31.743668+00:00
+- Started: 2026-10-25T21:52:39.860046+00:00
 - FL backend: FakeFL (no real FL Studio)
 
 ## Checks
@@ -32,7 +32,7 @@
 }
 ```
 
-### GET /api/mix (0.01 s)
+### GET /api/mix (0.0 s)
 
 ```json
 {
@@ -141,12 +141,12 @@
 ### POST /api/chat (1.04 s)
 Request: `{"session_id": "tracer", "message": "turn the kick down 2 dB"}`
 
-Gemma: I have proposed lowering the Kick volume by 2 dB. Please approve this change in the SoundPilot panel.
+Gemma: I have proposed lowering the Kick volume by 2 dB. Please approve the change in the SoundPilot panel.
 
-- tool `fl_set_track` args `{"volume_change_db": -2, "track": "Kick"}` -> `{"status": "proposed", "proposal_id": "p_bcc77e", "summary": "Kick: volume 0.0 dB -> -2.0 dB", "note": "Not applied yet: the user approves it in the SoundPilot panel."}`
-- proposal `p_bcc77e` fl_set_track: Kick: volume 0.0 dB -> -2.0 dB (why: You asked: "turn the kick down 2 dB")
+- tool `fl_set_track` args `{"track": "kick", "volume_change_db": -2}` -> `{"status": "proposed", "proposal_id": "p_9db558", "summary": "Kick: volume 0.0 dB -> -2.0 dB", "note": "Not applied yet: the user approves it in the SoundPilot panel."}`
+- proposal `p_9db558` fl_set_track: Kick: volume 0.0 dB -> -2.0 dB (why: You asked: "turn the kick down 2 dB")
 
-### GET /api/mix (0.01 s) - nothing applied before approval
+### GET /api/mix (0.0 s) - nothing applied before approval
 
 ```json
 {
@@ -252,14 +252,14 @@ Gemma: I have proposed lowering the Kick volume by 2 dB. Please approve this cha
      "na
 ```
 
-### POST /api/proposals/p_bcc77e/apply (0.0 s)
+### POST /api/proposals/p_9db558/apply (0.0 s)
 
 ```json
 {
- "proposal_id": "p_bcc77e",
+ "proposal_id": "p_9db558",
  "tool": "fl_set_track",
  "result": {
-  "change_id": "c_1e00be8a",
+  "change_id": "c_7dd71bbe",
   "track": {
    "index": 1,
    "name": "Kick"
@@ -386,22 +386,22 @@ Gemma: I have proposed lowering the Kick volume by 2 dB. Please approve this cha
      "n
 ```
 
-### POST /api/chat (0.87 s)
+### POST /api/chat (0.88 s)
 Request: `{"session_id": "tracer", "message": "undo that"}`
 
-Gemma: I have proposed undoing the previous change to restore the Kick volume to 0.0 dB. Please approve this in the SoundPilot panel.
+Gemma: I have proposed undoing the previous change to restore the Kick volume to 0.0 dB. Please approve it in the SoundPilot panel.
 
-- tool `fl_undo` args `{}` -> `{"status": "proposed", "proposal_id": "p_422d41", "summary": "Undo change c_1e00be8a on Kick (volume back to 0.0 dB)", "note": "Not applied yet: the user approves it in the SoundPilot panel."}`
-- proposal `p_422d41` fl_undo: Undo change c_1e00be8a on Kick (volume back to 0.0 dB) (why: You asked: "undo that")
+- tool `fl_undo` args `{}` -> `{"status": "proposed", "proposal_id": "p_0ff461", "summary": "Undo change c_7dd71bbe on Kick (volume back to 0.0 dB)", "note": "Not applied yet: the user approves it in the SoundPilot panel."}`
+- proposal `p_0ff461` fl_undo: Undo change c_7dd71bbe on Kick (volume back to 0.0 dB) (why: You asked: "undo that")
 
-### POST /api/proposals/p_422d41/apply (0.0 s)
+### POST /api/proposals/p_0ff461/apply (0.0 s)
 
 ```json
 {
- "proposal_id": "p_422d41",
+ "proposal_id": "p_0ff461",
  "tool": "fl_undo",
  "result": {
-  "change_id": "c_1e00be8a",
+  "change_id": "c_7dd71bbe",
   "track": {
    "index": 1,
    "name": "Kick"

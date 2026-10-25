@@ -1,0 +1,316 @@
+{
+  "tools": [
+    {
+      "name": "fl_get_mix_overview",
+      "description": "Read the FL Studio mixer: tempo (bpm) and every used mixer track (index 0 = master) with volume_db (dB), pan_pct (-100 left .. 100 right), stereo_width_pct, muted, solo, the built-in 3-band EQ (band low/mid/high, gain_db, freq_hz) and plugin names. Read-only. Set include_empty=true to also list unused default 'Insert N' tracks.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "include_empty": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      }
+    },
+    {
+      "name": "fl_set_track",
+      "description": "Change ONE mixer track (needs user approval). Arguments: track (track index or name, e.g. 'Kick' or 0 for master); then any of: volume_change_db (relative change in dB, e.g. -2 for 'down 2 dB'), volume_db (absolute level in dB, -60..5), pan_pct (-100 = hard left, 100 = hard right, 0 = centre), stereo_width_pct (-100..100), and for the built-in EQ: eq_band ('low'|'mid'|'high') with eq_gain_db (-12..12 dB; an EQ cut or boost is eq_gain_db, never volume_change_db) and/or eq_freq_hz (20..20000 Hz). Use ONLY these argument names; numbers must be numbers. Returns before/after readback and verified.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "track": {
+            "oneOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "string",
+                "minLength": 1
+              }
+            ]
+          },
+          "volume_db": {
+            "type": "number",
+            "minimum": -60,
+            "maximum": 5
+          },
+          "volume_change_db": {
+            "type": "number",
+            "minimum": -24,
+            "maximum": 12
+          },
+          "pan_pct": {
+            "type": "number",
+            "minimum": -100,
+            "maximum": 100
+          },
+          "stereo_width_pct": {
+            "type": "number",
+            "minimum": -100,
+            "maximum": 100
+          },
+          "eq_band": {
+            "enum": [
+              "low",
+              "mid",
+              "high"
+            ]
+          },
+          "eq_gain_db": {
+            "type": "number",
+            "minimum": -12,
+            "maximum": 12
+          },
+          "eq_freq_hz": {
+            "type": "number",
+            "minimum": 20,
+            "maximum": 20000
+          }
+        },
+        "required": [
+          "track"
+        ]
+      }
+    },
+    {
+      "name": "fl_undo",
+      "description": "Undo a change made by fl_set_track (needs user approval). Optional change_id; default is the last change. Restores the stored values and returns the readback.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "change_id": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "name": "fl_watch_peaks",
+      "description": "Play the song and watch mixer peak meters to find clipping or tracks running too hot. Arguments: seconds (2..300, default 30), start_playback (default true), from_bar (default 1). Returns per-track max_peak_dbfs and clip_count, the clipping track indices, and suggested volume_change_db trims.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "seconds": {
+            "type": "number",
+            "minimum": 2,
+            "maximum": 300,
+            "default": 30
+          },
+          "start_playback": {
+            "type": "boolean",
+            "default": true
+          },
+          "from_bar": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 1
+          }
+        }
+      }
+    },
+    {
+      "name": "analyze_audio",
+      "description": "Measure an exported WAV. Required: path (absolute path of the mix WAV). Optional: reference_path (absolute path of a reference track to compare against). Returns integrated/short-term loudness (LUFS), loudness range (LU), true peak (dBTP), sample peak (dBFS), crest (dB), stereo correlation, spectral centroid (Hz), 7 band levels (dB) and an analysis_id to pass to diagnose_complaint or verify_fix.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "reference_path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      }
+    },
+    {
+      "name": "diagnose_complaint",
+      "description": "Turn a plain-language complaint about the mix (e.g. 'too bright', 'muddy', 'sounds bad') into measured findings and proposed fl_set_track changes. Required: complaint (the user's words, e.g. 'too bright') AND analysis_id (from analyze_audio). Optional: track (track index or name). Prefer this tool for vague complaints. If it returns needs_clarification=true, ask the user its question and options and propose no changes.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "complaint": {
+            "type": "string"
+          },
+          "analysis_id": {
+            "type": "string"
+          },
+          "track": {
+            "oneOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "string",
+                "minLength": 1
+              }
+            ]
+          }
+        },
+        "required": [
+          "complaint",
+          "analysis_id"
+        ]
+      }
+    },
+    {
+      "name": "verify_fix",
+      "description": "Check whether a fix worked. Required: complaint (the original complaint, e.g. 'too bright'), before_analysis_id (the analysis_id of the mix before the fix) AND after_path (absolute path of the re-exported WAV). Returns passed and per-check before/after values.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "complaint": {
+            "type": "string"
+          },
+          "before_analysis_id": {
+            "type": "string"
+          },
+          "after_path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "complaint",
+          "before_analysis_id",
+          "after_path"
+        ]
+      }
+    },
+    {
+      "name": "analyze_midi",
+      "description": "Analyze an exported MIDI file. Required: path (absolute .mid path). Optional: track (MIDI track number, integer). Returns the detected key and confidence, out-of-key notes, timing offsets from the grid (ms), velocity spread and flags such as 'robotic'.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "track": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "path"
+        ]
+      }
+    },
+    {
+      "name": "fix_midi",
+      "description": "Fix a MIDI file (needs user approval). Required: path (absolute .mid path) and fix, one of 'snap_to_scale' (move out-of-key notes into the key), 'quantize' (snap timing to a grid) or 'humanize' (add small timing/velocity variation). Optional: grid_beats in quarter-note beats (1 = quarter notes, 0.5 = 8th notes, 0.25 = 16th notes, 0.125 = 32nd notes; set it whenever the user names a note value), key like 'C major' or 'A minor', strength_pct 0..100. Writes a new .mid and a piano-roll script the user applies in FL.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "fix": {
+            "enum": [
+              "snap_to_scale",
+              "quantize",
+              "humanize"
+            ]
+          },
+          "key": {
+            "type": "string",
+            "pattern": "^[A-G][#b]? (major|minor)$"
+          },
+          "grid_beats": {
+            "enum": [
+              0.125,
+              0.25,
+              0.5,
+              1
+            ]
+          },
+          "strength_pct": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "default": 100
+          }
+        },
+        "required": [
+          "path",
+          "fix"
+        ]
+      }
+    },
+    {
+      "name": "fl_play_midi",
+      "description": "Play a MIDI phrase on the selected FL instrument. Give EITHER path (absolute .mid path) OR notes (list of {pitch 0..127, start_beat, length_beats, velocity}), never both. Optional channel (global channel index). record=true records into the piano roll and needs user approval; record=false just plays it live. start_bar is the bar number where the recording starts (>= 2, default 2); set it when the user names a bar.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "array",
+            "maxItems": 5000,
+            "items": {
+              "type": "object",
+              "required": [
+                "pitch",
+                "start_beat",
+                "length_beats"
+              ],
+              "properties": {
+                "pitch": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 127
+                },
+                "start_beat": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "length_beats": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "velocity": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 127,
+                  "default": 100
+                }
+              }
+            }
+          },
+          "channel": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "record": {
+            "type": "boolean",
+            "default": false
+          },
+          "start_bar": {
+            "type": "integer",
+            "minimum": 2,
+            "default": 2
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "path"
+            ]
+          },
+          {
+            "required": [
+              "notes"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
