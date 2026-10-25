@@ -23,6 +23,11 @@ function summarize(tool, res) {
   }
 }
 
+function repeatsQuestion(text, question) {
+  const core = question.trim().replace(/[\s.?!:]+$/, "").toLowerCase();
+  return !!text && text.toLowerCase().includes(core);
+}
+
 function ToolTrace({ trace }) {
   if (!trace?.length) return null;
   return <details className="trace">
@@ -92,7 +97,7 @@ export default function AssistantView({ sessionId, run, tracks, info, offline, d
             <div className="speaker"><RecordMark/> <span>SOUNDPILOT</span></div>
             {m.text && <p className="replytext">{m.text}</p>}
             {m.clarify && <>
-              {m.clarify.question && m.clarify.question !== m.text && <p className="replytext"><b>{m.clarify.question}</b></p>}
+              {m.clarify.question && !repeatsQuestion(m.text, m.clarify.question) && <p className="replytext"><b>{m.clarify.question}</b></p>}
               {m.clarify.options.length > 0 && <div className="chipRow">{m.clarify.options.map(o => <button key={o} className="chip" disabled={i !== lastIndex || busy} onClick={() => send(o)}>{o}</button>)}</div>}
             </>}
             {m.proposals > 0 && <p className="replynote">I've drafted {m.proposals} {m.proposals === 1 ? "change" : "changes"}. Review {m.proposals === 1 ? "it" : "them"} in the listening notes panel — nothing is applied until you approve.</p>}
