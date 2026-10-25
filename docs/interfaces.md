@@ -73,6 +73,17 @@ default_fake(**overrides) -> FakeFL   # demo mix: Master + 12 named tracks (Kick
 
 All §3.4 quirks are mandatory (pickup ignore > 0.05 when pickupMode != 0, delayed readback, exactly 3 EQ bands with table mappings, 0.8 → 0.0 dB volume table, instantaneous peaks from `peak_script` (time measured from transport `play`), transport clock with 5 ms lag and pattern-mode wrap). The fake's `transport` reply includes `pos_ticks`, `bpm`, `ppq`, `loop_mode`, `playing`, `recording`.
 
+### Wire details (Core, implemented in `protocol.py` / `fake.py`; the device script must match)
+
+- Payload is always `<id>|<op>|<args>` (trailing `|` present even with no args). String escaping: every UTF-8 byte outside 0x20..0x7E, plus `%` `|` `;` `=`, becomes `%XX` (uppercase hex); decoders accept any `%XX`. Floats use Python `repr`; non-finite floats are sent as `n`. Replies are `ok`/`err` with the request's id.
+- Per-index reply keys (`tracks`, `peaks`, `channels`) use the ABSOLUTE index as K (`n12`, `v12`, …), not the offset within the batch.
+- `tracks` and `channels` replies also include `total` (`mixer.trackCount()` incl. master and the current track / `channels.channelCount(True)`).
+- `fx` reply: for each loaded slot K, `sK=b1` and `nK=s<name>`.
+- `set` / `eq_set` accept an optional `pk` (pickup mode, default 0). The device script always passes 0 to FL; the fake uses it to emulate the pickup quirk.
+- `transport cmd=pos` without `pos_ticks` is a pure read; with `pos_ticks` it sets the position. `play` with `pos_ticks` sets the position, then starts.
+- `FLClient` also has `sync()` (one `hello` round trip so pending writes land; read back at least one op after it) and `sleep(seconds)` (advances a `VirtualClock` on the fake, real sleep otherwise). Use `fl.now()` / `fl.sleep()` in schedulers so tests can run on a virtual clock. `FakeFL(clock=VirtualClock())` is available in `mixassist/fl/fake.py`.
+- `FakeFL.true_ticks(t)` is the real song position at time t (no 5 ms reporting lag); recorded notes use it. `fake.selected_channel` is set by `select`.
+
 `mixassist/fl/curves.py` (Core): the placeholder volume and EQ tables plus `db_to_norm` / `norm_to_db` helpers (bisection on monotonic tables), marked PROBE P3/P4.
 
 `mixassist/fl/tracks.py` (Core): `resolve_track(ref: int | str, tracks: list[dict]) -> dict` per §2 (exact case-insensitive, then unique prefix; `AMBIGUOUS_TARGET` with candidates; `NOT_FOUND`).
