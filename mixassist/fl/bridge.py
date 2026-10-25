@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import math
+import os
 import queue
 import statistics
 import sys
@@ -81,8 +82,8 @@ class BridgeTransport:
 
     def __init__(self, to_port: str = DEFAULT_TO_PORT, from_port: str = DEFAULT_FROM_PORT, rtmidi_module=None):
         rt = _load_rtmidi(rtmidi_module)
-        self.to_port = to_port
-        self.from_port = from_port
+        self.to_port = os.environ.get("SOUNDPILOT_MIDI_TO_PORT") or to_port
+        self.from_port = os.environ.get("SOUNDPILOT_MIDI_FROM_PORT") or from_port
         self._frames: queue.Queue[bytes] = queue.Queue()
         self._partial: bytearray | None = None
         self._send_lock = threading.Lock()
@@ -100,13 +101,13 @@ class BridgeTransport:
             self.close()
             raise ToolError("FL_NOT_CONNECTED", f"cannot open the MIDI system: {exc}", hint=SETUP_HINT) from exc
 
-        out_index = find_port(outputs, to_port)
-        in_index = find_port(inputs, from_port)
+        out_index = find_port(outputs, self.to_port)
+        in_index = find_port(inputs, self.from_port)
         missing = []
         if out_index is None:
-            missing.append(f"output port '{to_port}' (have: {', '.join(outputs) or 'none'})")
+            missing.append(f"output port '{self.to_port}' (have: {', '.join(outputs) or 'none'})")
         if in_index is None:
-            missing.append(f"input port '{from_port}' (have: {', '.join(inputs) or 'none'})")
+            missing.append(f"input port '{self.from_port}' (have: {', '.join(inputs) or 'none'})")
         if missing:
             self.close()
             raise ToolError("FL_NOT_CONNECTED", "MIDI port not found: " + "; ".join(missing), hint=SETUP_HINT)
