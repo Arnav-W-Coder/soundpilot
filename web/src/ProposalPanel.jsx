@@ -6,9 +6,9 @@ import ErrorNote from "./ErrorNote.jsx";
 const TOOL_TITLES = { fl_set_track: "Mixer change", fix_midi: "MIDI fix", fl_play_midi: "Record MIDI into FL", fl_undo: "Undo a change" };
 const STATUS_TAGS = { pending: ["PENDING", "pending"], applying: ["APPLYING…", "pending"], applied: ["APPLIED", "ok"], failed: ["FAILED", "warn"], undone: ["UNDONE", "muted"], discarded: ["DISCARDED", "muted"] };
 
-function ChangeList({ preview }) {
+function ChangeList({ preview, why }) {
   const changes = preview?.changes || [];
-  if (!changes.length) return <small>{preview?.summary}</small>;
+  if (!changes.length) return preview?.summary && preview.summary !== why ? <small className="changeline">{preview.summary}</small> : null;
   return <>{changes.map((c, i) => <small key={i} className="changeline">{fieldLabel(c.field)} {fieldValue(c.field, c.before, c.unit)} → {fieldValue(c.field, c.after, c.unit)}</small>)}</>;
 }
 
@@ -17,10 +17,17 @@ function Verified({ value }) {
   return <span className={"tag " + (value ? "ok" : "warn")}>{value ? "✓ VERIFIED" : "⚠ NOT VERIFIED"}</span>;
 }
 
-function Readback({ before = {}, after = {} }) {
-  const keys = [...new Set([...Object.keys(before || {}), ...Object.keys(after || {})])];
+// fl_set_track before/after (and fl_undo restored) carry the full track state; show only what moved.
+function Readback({ before, after }) {
+  const keys = [...new Set([...Object.keys(before || {}), ...Object.keys(after || {})])].filter(k => k !== "eq_band");
   if (!keys.length) return null;
-  return <div className="readback">{keys.map(k => <div className="metricrow" key={k}><span>{fieldLabel(k)}</span><strong>{fieldValue(k, before?.[k])} → {fieldValue(k, after?.[k])}</strong></div>)}</div>;
+  const changed = before ? keys.filter(k => JSON.stringify(before[k]) !== JSON.stringify(after?.[k])) : keys;
+  const band = after?.eq_band || before?.eq_band;
+  const label = k => (band && /^eq_/.test(k) ? band + " " : "") + fieldLabel(k);
+  return <div className="readback">
+    {(changed.length ? changed : keys).map(k => <div className="metricrow" key={k}><span>{label(k)}</span><strong>{before ? fieldValue(k, before[k]) + " → " : ""}{fieldValue(k, after?.[k])}</strong></div>)}
+    {before && !changed.length && <p className="userAction">Readback shows no change.</p>}
+  </div>;
 }
 
 export function ApplyResult({ tool, result }) {
@@ -39,12 +46,12 @@ export function ApplyResult({ tool, result }) {
     return <div className="readback">
       <div className="metricrow"><span>Mode</span><strong>{result.mode}</strong></div>
       <div className="metricrow"><span>Notes sent</span><strong>{result.notes_sent}</strong></div>
-      {result.channel && <div className="metricrow"><span>Channel</span><strong>{result.channel.index} · {result.channel.name}</strong></div>}
+      {result.channel && <div className="metricrow"><span>Channel</span><strong>{typeof result.channel.index === "number" ? result.channel.index + " · " : ""}{result.channel.name}</strong></div>}
       {result.timing_lateness_ms && <div className="metricrow"><span>Lateness p95 / max</span><strong>{fixed(result.timing_lateness_ms.p95)} / {fixed(result.timing_lateness_ms.max)} ms</strong></div>}
       {result.warnings?.map((w, i) => <p key={i} className="userAction">{w}</p>)}
     </div>;
   }
-  if (tool === "fl_undo") return <><Verified value={result.verified}/><Readback after={result.restored}/></>;
+  if (tool === "fl_undo") return <><div className="resulthead"><span>Restored{result.track?.name ? " · " + result.track.name : ""}</span><Verified value={result.verified}/></div><Readback before={result.undoneAfter} after={result.restored}/></>;
   return <>
     <div className="resulthead">{result.track?.name && <span>{result.track.name}</span>}<Verified value={result.verified}/></div>
     <Readback before={result.before} after={result.after}/>
@@ -69,7 +76,7 @@ export default function ProposalPanel({ proposals, onApply, onApplyAll, onDiscar
         <div>
           <strong>{p.preview?.track?.name || TOOL_TITLES[p.tool] || p.tool}</strong> <span className={"tag " + STATUS_TAGS[p.status][1]}>{STATUS_TAGS[p.status][0]}</span>
           {p.why && <p>{p.why}</p>}
-          <ChangeList preview={p.preview}/>
+          <ChangeList preview={p.preview} why={p.why}/>
           <div className="planactions"><button className="linkButton" disabled={busy} onClick={() => onApply(p)}>Apply ↗</button><button className="linkButton" disabled={busy} onClick={() => onDiscard(p)}>Discard</button></div>
         </div>
       </div>)}</div>

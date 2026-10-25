@@ -50,6 +50,7 @@ export const fieldLabel = f => FIELD_LABELS[f] || f.replace(/_/g, " ");
 export function fieldValue(field, value, unit) {
   if (value === null || value === undefined) return "–";
   if (typeof value === "boolean") return value ? "on" : "off";
+  if (typeof value === "object") return value.name ?? JSON.stringify(value);
   if (typeof value !== "number") return String(value);
   if (field === "pan_pct") return pan(value);
   if (field === "stereo_width_pct") return pct(value);

@@ -14,8 +14,8 @@ const START_COMMAND = ".venv/bin/uvicorn mixassist.api:app --port 8000";
 const TOOL_LABELS = { fl_set_track: "Mixer change", fix_midi: "MIDI fix", fl_play_midi: "MIDI recording", fl_undo: "Undo" };
 
 export function describeStatus(status, offline) {
-  if (offline) return { name: "Backend", fl: "Backend offline", tag: "OFFLINE", llm: "LLM unavailable", provider: "–", model: "–", live: false };
-  if (!status) return { name: "Backend", fl: "Connecting…", tag: "CONNECTING", llm: "…", provider: "…", model: "…", live: false };
+  if (offline) return { name: "SoundPilot", fl: "Backend offline", tag: "OFFLINE", llm: "LLM unavailable", provider: "–", model: "–", live: false };
+  if (!status) return { name: "SoundPilot", fl: "Connecting…", tag: "CONNECTING", llm: "…", provider: "…", model: "…", live: false };
   const fake = status.fl_backend === "fake";
   const name = fake ? "FakeFL" : "FL Studio";
   const fl = status.fl_connected ? (fake ? "FakeFL connected" : "FL connected") : (fake ? "FakeFL not connected" : "FL not connected");
@@ -158,7 +158,8 @@ export default function App() {
     setUndoing(true);
     const r = await run(() => api.undo(last.change_id));
     setUndoing(false);
-    setUndoResult({ ...r, label: last.label });
+    const applied = proposals.find(p => p.proposal_id === last.proposal_id);
+    setUndoResult({ ...r, label: last.label, undoneAfter: applied?.result?.after });
     if (isError(r)) {
       addLog(`Undo failed · ${r.error.code}: ${r.error.message}`);
       return;
