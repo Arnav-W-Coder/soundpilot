@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mixassist"
+version = "0.1.0"
+description = "SoundPilot x MixAssist: AI mixing assistant for FL Studio"
+requires-python = ">=3.11"
+dependencies = [
+  "numpy",
+  "scipy",
+  "soundfile",
+  "pyloudnorm",
+  "mido",
+  "python-rtmidi",
+  "mcp",
+  "fastapi",
+  "uvicorn",
+  "google-genai",
+  "jsonschema",
+  "pyyaml",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "httpx"]
+
+[tool.setuptools.packages.find]
+include = ["mixassist*"]
+
+[tool.setuptools.package-data]
+mixassist = ["complaints/*.yaml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+  "llm: needs a live LLM provider (skipped unless SOUNDPILOT_LIVE_LLM=1)",
+  "realfl: needs real FL Studio (always skipped; see internal/probes.md)",
+]
