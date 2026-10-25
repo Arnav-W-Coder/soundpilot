@@ -25,6 +25,10 @@ Design docs: [build brief](docs/build-brief.md) (integration decisions, HTTP API
 | `fix_midi` | snap to scale, quantize or humanize; writes a .mid and a piano-roll `MCP_Apply.pyscript` | **write** |
 | `fl_play_midi` | play a .mid or notes on the selected instrument (live), or record it into the piano roll (`record=true`) | **write** when recording |
 
+## Windows and macOS quick start
+
+The same Python FastAPI → Gemma → MIDI SysEx → FL Studio device-script architecture works on both platforms. **Windows setup and diagnostics:** [docs/windows-setup.md](docs/windows-setup.md). Run `python scripts/start.py setup`, create the virtual MIDI ports (loopMIDI on Windows / IAC on macOS), then `python scripts/start.py doctor` and `python scripts/start.py check`. Start the live backend with `python scripts/start.py backend` and the frontend from `web/` with `npm run dev`. FL Studio itself still requires human-run verification; see [internal/probes.md](internal/probes.md).
+
 ## Setup
 
 ```bash
