@@ -24,7 +24,7 @@ def documents_candidates(platform: str | None = None, environ=None, home: Path |
 
     if platform == "win32":
         personal = registry_personal
-        if personal is None:
+        if personal is None and environ is None:
             try:
                 import winreg
                 with winreg.OpenKey(winreg.HKEY_CURRENT_USER,
