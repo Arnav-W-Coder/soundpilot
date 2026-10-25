@@ -33,6 +33,7 @@ mixassist = ["complaints/*.yaml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]
 markers = [
   "llm: needs a live LLM provider (skipped unless SOUNDPILOT_LIVE_LLM=1)",
   "realfl: needs real FL Studio (always skipped; see internal/probes.md)",

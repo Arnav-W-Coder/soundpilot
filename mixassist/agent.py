@@ -354,8 +354,11 @@ class Agent:
         failed: dict[tuple[str, str], dict] = {}
 
         for _ in range(MAX_MODEL_TURNS):
-            response = self.provider.chat([{"role": "system", "content": self.system_prompt}] + session.messages,
-                                          self.tools, self.temperature)
+            prompt = [{"role": "system", "content": self.system_prompt}] + session.messages
+            response = self.provider.chat(prompt, self.tools, self.temperature)
+            if not response.text and not response.tool_calls:
+                log.warning("model returned an empty response; retrying once")
+                response = self.provider.chat(prompt, self.tools, self.temperature)
             calls = list(response.tool_calls)
             if not calls and response.text:
                 calls = parse_text_tool_calls(response.text, set(TOOL_NAMES))

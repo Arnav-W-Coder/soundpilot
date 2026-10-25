@@ -111,7 +111,8 @@ DESCRIPTIONS: dict[str, str] = {
         "for master); then any of: volume_change_db (relative change in dB, e.g. -2 for 'down 2 dB'), "
         "volume_db (absolute level in dB, -60..5), pan_pct (-100 = hard left, 100 = hard right, 0 = centre), "
         "stereo_width_pct (-100..100), and for the built-in EQ: eq_band ('low'|'mid'|'high') with eq_gain_db "
-        "(-12..12 dB) and/or eq_freq_hz (20..20000 Hz). Use ONLY these argument names; numbers must be numbers. "
+        "(-12..12 dB; an EQ cut or boost is eq_gain_db, never volume_change_db) and/or eq_freq_hz (20..20000 Hz). "
+        "Use ONLY these argument names; numbers must be numbers. "
         "Returns before/after readback and verified."
     ),
     "fl_undo": (
@@ -149,15 +150,17 @@ DESCRIPTIONS: dict[str, str] = {
     "fix_midi": (
         "Fix a MIDI file (needs user approval). Required: path (absolute .mid path) and fix, one of "
         "'snap_to_scale' (move out-of-key notes into the "
-        "key), 'quantize' (snap timing to grid_beats: 0.125, 0.25, 0.5 or 1 beats) or 'humanize' (add small "
-        "timing/velocity variation). Optional key like 'C major' or 'A minor', strength_pct 0..100. Writes a new "
-        ".mid and a piano-roll script the user applies in FL."
+        "key), 'quantize' (snap timing to a grid) or 'humanize' (add small timing/velocity variation). Optional: "
+        "grid_beats in quarter-note beats (1 = quarter notes, 0.5 = 8th notes, 0.25 = 16th notes, 0.125 = 32nd "
+        "notes; set it whenever the user names a note value), key like 'C major' or 'A minor', strength_pct "
+        "0..100. Writes a new .mid and a piano-roll script the user applies in FL."
     ),
     "fl_play_midi": (
         "Play a MIDI phrase on the selected FL instrument. Give EITHER path (absolute .mid path) OR notes "
         "(list of {pitch 0..127, start_beat, length_beats, velocity}), never both. Optional channel (global "
-        "channel index). record=true records into the piano roll starting at start_bar (>= 2) and needs user "
-        "approval; record=false just plays it live."
+        "channel index). record=true records into the piano roll and needs user approval; record=false just "
+        "plays it live. start_bar is the bar number where the recording starts (>= 2, default 2); set it when the "
+        "user names a bar."
     ),
 }
 

@@ -58,6 +58,8 @@ class OllamaProvider(LLMProvider):
                     log.warning("ollama %s returned %s; retrying", self.model, resp.status_code)
                     time.sleep(BACKOFF_S[attempt])
                     continue
+                if resp.status_code in (401, 403):
+                    raise LLMError(f"ollama {self.model}: HTTP {resp.status_code}; cloud models need `ollama signin`")
                 if resp.status_code != 200:
                     raise LLMError(f"ollama {self.model}: HTTP {resp.status_code}: {resp.text[:300]}")
                 data = resp.json()
@@ -88,5 +90,6 @@ class OllamaProvider(LLMProvider):
             return None, f"ollama at {self.host} unreachable: {exc}"
         if self.model in names or f"{self.model}:latest" in names:
             return True, f"ollama: model {self.model} is pulled"
-        return False, (f"ollama: model {self.model!r} is not pulled (have: {', '.join(sorted(n for n in names if n))}). "
-                       "Documented IDs: gemma4:31b-cloud on Ollama, gemma-4-26b-a4b-it-maas on Vertex.")
+        return False, (f"ollama: model {self.model!r} is not available (have: {', '.join(sorted(n for n in names if n))}). "
+                       "Use the cloud model gemma4:31b-cloud (`ollama signin`, then `ollama pull gemma4:31b-cloud`); "
+                       "on Vertex use gemma-4-26b-a4b-it-maas.")
