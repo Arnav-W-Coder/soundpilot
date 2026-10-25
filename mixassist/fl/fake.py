@@ -11,6 +11,8 @@ Quirks reproduced on purpose (code that relies on their absence must fail tests)
 - Peaks are instantaneous, sampled at poll time from ``peak_script`` (seconds since transport play).
 - Transport clock: pos_ticks = start + (now - t_start) * ppq * bpm / 60, reported 5 ms late;
   in pattern mode (loop_mode 0) the position wraps at the pattern length.
+- ``tempo_x1000=True`` reports ``bpm`` as BPM * 1000, the raw ``mixer.getCurrentTempo()`` value
+  that real FL returns (FL API 45) and that device scripts older than the fix pass through.
 """
 from __future__ import annotations
 
@@ -69,6 +71,7 @@ class FakeFL:
         clock: Callable[[], float] = time.monotonic,
         pattern_beats: float = 16.0,
         port: int = 0,
+        tempo_x1000: bool = False,
     ):
         self.vol_curve = vol_curve or curves.VOLUME_TABLE
         eq_curves = eq_curves or {}
@@ -83,6 +86,7 @@ class FakeFL:
         self.clock = clock
         self.pattern_beats = float(pattern_beats)
         self.port = int(port)
+        self.tempo_x1000 = bool(tempo_x1000)
 
         self.tracks = [self._make_track(t, i) for i, t in enumerate(tracks)]
         self.tracks.append(self._make_track({"name": "Current"}, len(self.tracks)))  # "current" track, excluded in v1
@@ -325,7 +329,7 @@ class FakeFL:
             "recording": self.recording,
             "pos_ticks": int(round(self.reported_ticks())),
             "loop_mode": self.loop_mode,
-            "bpm": self.bpm,
+            "bpm": self.bpm * 1000.0 if self.tempo_x1000 else self.bpm,
             "ppq": self.ppq,
         }
 

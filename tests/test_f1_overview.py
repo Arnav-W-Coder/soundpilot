@@ -1,4 +1,5 @@
 """F1 acceptance (spec §6)."""
+import logging
 import time
 
 import pytest
@@ -47,6 +48,23 @@ def test_default_named_track_with_plugin_is_not_empty():
     install_fake(tracks=tracks)
     out = call_tool("fl_get_mix_overview", {})
     assert [t["name"] for t in out["tracks"]] == ["Master", "Insert 1"]
+
+
+def test_overview_normalizes_tempo_x1000_from_outdated_device_script(caplog):
+    install_fake(bpm=130.0, tempo_x1000=True)
+    with caplog.at_level(logging.WARNING, logger="mixassist.fl.client"):
+        first = call_tool("fl_get_mix_overview", {})
+        second = call_tool("fl_get_mix_overview", {})
+    assert first["bpm"] == 130.0 and second["bpm"] == 130.0
+    warnings = [r for r in caplog.records if "x1000" in r.getMessage()]
+    assert len(warnings) == 1 and "bpm=130000" in warnings[0].getMessage()
+
+
+def test_true_bpm_is_left_alone(caplog):
+    install_fake(bpm=999.0)
+    with caplog.at_level(logging.WARNING, logger="mixassist.fl.client"):
+        assert call_tool("fl_get_mix_overview", {})["bpm"] == 999.0
+    assert not [r for r in caplog.records if r.name == "mixassist.fl.client"]
 
 
 def test_old_api_has_no_eq():

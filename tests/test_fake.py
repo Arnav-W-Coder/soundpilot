@@ -91,6 +91,17 @@ def test_transport_clock_lag_and_pattern_wrap():
     assert reply["loop_mode"] == 0 and reply["bpm"] == 120.0 and reply["ppq"] == 96
 
 
+def test_tempo_x1000_mimics_raw_get_current_tempo():
+    from mixassist.fl.protocol import decode, encode
+
+    clock = VirtualClock()
+    fake = default_fake(clock=clock, bpm=130.0, ppq=96, tempo_x1000=True)
+    _, _, raw = decode(fake.handle(encode(1, "transport", {"cmd": "play", "pos_ticks": 0})))
+    assert raw["bpm"] == 130000.0
+    clock.advance(1.0)
+    assert fake.true_ticks() == pytest.approx(96 * 130 / 60)  # the clock itself runs at the true tempo
+
+
 def test_notes_record_only_when_recording_and_playing():
     clock = VirtualClock()
     fake, client = install_fake(clock=clock)

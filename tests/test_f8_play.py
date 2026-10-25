@@ -79,6 +79,30 @@ def test_virtual_clock_record_is_exact_up_to_report_lag():
     assert np.all(np.abs(err_ms) <= 10.0)
 
 
+def test_record_uses_true_bpm_when_fl_reports_tempo_x1000():
+    """Real FL's getCurrentTempo() is BPM x 1000; beats->seconds and the clock fit must use 130, not 130000."""
+    bpm = 130.0
+    fake = default_fake(bpm=bpm, ppq=PPQ, clock=VirtualClock(), tempo_x1000=True)
+    fl = FLClient(FakeTransport(fake), "fake")
+    notes = [PlayNote(60 + i % 12, i * 0.25, 0.2) for i in range(32)]
+    out = play(fl, notes, record=True)
+    assert out["bpm"] == bpm
+    ticks = np.array([r["tick"] for r in fake.recorded_notes])
+    err_ms = (ticks - target_ticks(notes, 2)) / (PPQ * bpm / 60) * 1000
+    assert len(ticks) == 32 and np.all(np.abs(err_ms) <= 10.0)
+
+
+def test_live_spacing_uses_true_bpm_when_fl_reports_tempo_x1000():
+    fake = default_fake(bpm=130.0, ppq=PPQ, clock=VirtualClock(), tempo_x1000=True)
+    fl = FLClient(FakeTransport(fake), "fake")
+    onsets = []
+    real_note = fake.note
+    fake.note = lambda s, d1, d2, t: (onsets.append(t) if s == 0x90 else None, real_note(s, d1, d2, t))
+    out = play(fl, [PlayNote(60, 0, 0.5), PlayNote(62, 4, 0.5)])
+    assert out["bpm"] == 130.0
+    assert onsets[1] - onsets[0] == pytest.approx(4 * 60 / 130.0, abs=0.005)
+
+
 def test_pattern_mode_warns():
     fl, fake = client(clock=VirtualClock(), loop_mode=0)
     out = play(fl, [PlayNote(60, 0, 0.5)], record=True)

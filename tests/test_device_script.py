@@ -268,6 +268,16 @@ def test_transport_reply_keys(dev, sim):
     assert ("transport.getSongPos", 2) in sim.calls
 
 
+@pytest.mark.parametrize("raw, bpm", [
+    (130000.0, 130.0),  # observed on FL API 45 for a 130 BPM project
+    (128500.0, 128.5),
+    (130.0, 130.0),
+])
+def test_transport_reports_true_bpm(dev, sim, raw, bpm):
+    sim.bpm = raw
+    assert ok(dev, sim, "transport", {"cmd": "pos"})["bpm"] == bpm
+
+
 def test_transport_play_stop_are_idempotent(dev, sim):
     assert ok(dev, sim, "transport", {"cmd": "play"})["playing"] is True
     assert ok(dev, sim, "transport", {"cmd": "play"})["playing"] is True  # start() toggles; must not pause

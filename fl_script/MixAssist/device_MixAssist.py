@@ -48,6 +48,10 @@ PEAK_MAX_LR = 2
 UF_NONE = 0
 # Built-in EQ functions exist from API 35 [ST:mixer/__eq.py] (PROBE P1/P4)
 EQ_MIN_API = 35
+# mixer.getCurrentTempo() returned BPM * 1000 (130000.0 for 130 BPM) on FL
+# API 45, the REC_Tempo storage form [ST:midi/__rec_events]. FL tempos stay
+# far below 1000 BPM, so anything above this is the x1000 form.
+TEMPO_X1000_ABOVE = 1000.0
 
 MAX_TRACKS_PER_OP = 8
 MAX_PEAKS_PER_OP = 32
@@ -329,14 +333,20 @@ def op_peaks(args):
     return out
 
 
+def _tempo_bpm():
+    bpm = float(mixer.getCurrentTempo())
+    if bpm > TEMPO_X1000_ABOVE:
+        bpm = bpm / 1000.0
+    return bpm
+
+
 def _transport_state():
     return {
         "playing": bool(transport.isPlaying()),
         "recording": bool(transport.isRecording()),
         "pos_ticks": int(transport.getSongPos(SONGLENGTH_ABSTICKS)),
         "loop_mode": int(transport.getLoopMode()),
-        # PROBE P1: confirm getCurrentTempo() returns BPM as a float.
-        "bpm": float(mixer.getCurrentTempo()),
+        "bpm": _tempo_bpm(),
         "ppq": int(general.getRecPPQ()),
     }
 

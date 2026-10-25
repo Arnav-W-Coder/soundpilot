@@ -408,6 +408,22 @@ def test_core_tools_run_over_bridge_and_device_script(loop):
         set_fl(previous)
 
 
+def test_overview_bpm_when_fl_returns_tempo_x1000(loop):
+    from mixassist.fl import get_fl, set_fl
+    from mixassist.tools import call_tool
+
+    fl, sim, t, _ = loop
+    sim.bpm = 130000.0  # mixer.getCurrentTempo() on FL API 45 for a 130 BPM project
+    previous = get_fl()
+    set_fl(fl)
+    try:
+        overview = call_tool("fl_get_mix_overview", {})
+        assert "error" not in overview, overview
+        assert overview["bpm"] == 130.0
+    finally:
+        set_fl(previous)
+
+
 def test_cli_check_reports_missing_ports(monkeypatch, capsys):
     monkeypatch.setattr(bridge, "_load_rtmidi", lambda module=None: module or FakeRtMidi(inputs=[], outputs=[]))
     assert bridge.main(["--check"]) == 2

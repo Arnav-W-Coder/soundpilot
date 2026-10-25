@@ -10,6 +10,10 @@ from mixassist.fl import protocol
 
 log = logging.getLogger(__name__)
 
+# FL's mixer.getCurrentTempo() returns BPM * 1000 (observed: 130000.0 at 130 BPM, FL API 45).
+# Device scripts installed before that fix pass it through; real tempos stay far below this.
+TEMPO_X1000_ABOVE = 1000.0
+
 
 class FLClient:
     def __init__(self, transport, backend: str):
@@ -17,6 +21,7 @@ class FLClient:
         self.backend = backend
         self._next_id = 0
         self._lock = threading.RLock()
+        self._warned_tempo_x1000 = False
         self.undo_history: list[dict] = []  # fl_set_track changes, newest last (in memory only)
 
     def _new_id(self) -> int:
@@ -53,7 +58,23 @@ class FLClient:
                     continue
                 if reply_op == "err":
                     raise ToolError("FL_ERROR", f"FL rejected {op!r}: {reply_args.get('msg', 'unknown error')}")
+                if op == "transport":
+                    self._normalize_bpm(reply_args)
                 return reply_args
+
+    def _normalize_bpm(self, reply: dict) -> None:
+        bpm = reply.get("bpm")
+        if not isinstance(bpm, (int, float)) or bpm <= TEMPO_X1000_ABOVE:
+            return
+        reply["bpm"] = bpm / 1000.0
+        if not self._warned_tempo_x1000:
+            self._warned_tempo_x1000 = True
+            log.warning(
+                "FL reported bpm=%g, the getCurrentTempo() x1000 form; using %g BPM. "
+                "The installed MixAssist device script is outdated: copy fl_script/MixAssist/device_MixAssist.py "
+                "into FL's Settings/Hardware/MixAssist folder and reload it.",
+                bpm, reply["bpm"],
+            )
 
     def sync(self) -> None:
         """Push pending writes through: FL applies a write only after a later op (spec §3.4 delayed readback)."""

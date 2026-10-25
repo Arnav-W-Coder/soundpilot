@@ -66,7 +66,7 @@ eq_get	track	gB, gdB, fB, fhB, wB for B in 0..2	mixer.getEqBandCount/getEqGain(i
 set	track, optional v, p, s (norm/−1…1)	ok	mixer.setTrackVolume(i,v,0), setTrackPan(i,p,0), setTrackStereoSep(i,s,0) [ST:mixer/__tracks.py]; general.saveUndo("MixAssist",0) [ST:general/__undo.py]
 eq_set	track, band, optional g, f, w (norm)	ok	mixer.setEqGain/setEqFrequency/setEqBandwidth [ST:mixer/__eq.py]
 peaks	start, count (≤32)	pK = max(L,R) linear (1.0 = 0 dBFS)	mixer.getTrackPeaks(i,2) [ST:mixer/__tracks.py]
-transport	cmd ∈ play, stop, rec_on, rec_off, pos; optional pos_ticks	playing, recording, pos_ticks, loop_mode, bpm, ppq	transport.start/stop/record/isPlaying/isRecording/setSongPos(t,2)/getSongPos(2)/getLoopMode [ST:transport/init.py]; mixer.getCurrentTempo() [ST:mixer/__properties.py]; general.getRecPPQ()
+transport	cmd ∈ play, stop, rec_on, rec_off, pos; optional pos_ticks	playing, recording, pos_ticks, loop_mode, bpm, ppq	transport.start/stop/record/isPlaying/isRecording/setSongPos(t,2)/getSongPos(2)/getLoopMode [ST:transport/init.py]; mixer.getCurrentTempo() [ST:mixer/__properties.py] (returns BPM × 1000 on FL API 45; the script reports true BPM); general.getRecPPQ()
 channels	start, count (≤16)	total, nK	channels.channelCount(True), getChannelName(i,True)
 select	channel	ok	channels.selectOneChannel(i,True) [ST:channels/__properties.py]; ui.showWindow(3) (widPianoRoll) [ST:ui/__windows.py]
 The device script handles SysEx only in OnSysEx and sets msg.handled = True [ST:callbacks/init.py], [ST:fl_classes].
@@ -82,6 +82,7 @@ Built-in EQ is exactly 3 bands. band 3 or more gives err. Its normalized↔dB/Hz
 Volume curve: a monotonic table with 0.8 → 0.0 dB [ST:mixer/__tracks.py, "default value is 0.8"]. Other points are placeholders until P3 replaces them.
 Peaks are instantaneous and sampled at poll time from peak_script. Peaks between polls are invisible.
 Transport clock: pos_ticks = start + (now − t_start) · ppq · bpm/60 + 5 ms lag. In pattern mode, the position wraps at the pattern length.
+Optional tempo_x1000=True: the transport reply's bpm is BPM × 1000, the raw getCurrentTempo() value on real FL. FLClient divides any bpm above 1000 by 1000.
 4. Decision records
 ADR-1 Transport: SysEx over two loopMIDI or IAC ports, handled event-driven in OnSysEx.
 Why: FL 2025 controller scripts can't use sockets or threads, and OnIdle may not fire [BY]. PostFader ships SysEx in production [PF].

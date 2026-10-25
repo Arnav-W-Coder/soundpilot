@@ -63,7 +63,8 @@ Codec (`mixassist/fl/protocol.py`, Core): `encode(msg_id: int, op: str, args: di
 ```python
 FakeFL(tracks: list[dict], eq_curves=None, vol_curve=None, peak_script: dict[int, list[tuple[float, float]]] | None = None,
        bpm: float = 120.0, ppq: int = 96, loop_mode: int = 1, channels: list[str] | None = None,
-       api: int = 36, clock: Callable[[], float] = time.monotonic)
+       api: int = 36, clock: Callable[[], float] = time.monotonic, pattern_beats: float = 16.0, port: int = 0,
+       tempo_x1000: bool = False)   # tempo_x1000: transport reports bpm × 1000, like raw getCurrentTempo() on real FL
 fake.handle(frame: bytes) -> bytes | None
 fake.note(status: int, d1: int, d2: int, t: float) -> None
 fake.recorded_notes   # list of dicts {pitch, velocity, tick, t} recorded while recording and playing (note-ons)

@@ -1,10 +1,10 @@
 # Real-FL probe checklist (spec §5 P1–P8, §8.3, §8.4)
 
-**Status: nothing on this page has been run on real FL Studio.** Every result row says "not run" until a person runs the step on the target machine and fills it in. Don't copy expected values into the results columns.
+**Status: no probe on this page has been run on real FL Studio.** One real-FL observation is recorded under P1 (tempo units). Every result row says "not run" until a person runs the step on the target machine and fills it in. Don't copy expected values into the results columns.
 
 Everything the backend assumes about real FL that isn't in the API stubs is marked PROBE in the code. These checks confirm or replace those assumptions:
 
-- `fl_script/MixAssist/device_MixAssist.py`: frame cap `MAX_FRAME` (P2), `getCurrentTempo()` units (P1), undo order (§8.3)
+- `fl_script/MixAssist/device_MixAssist.py`: frame cap `MAX_FRAME` (P2), `getCurrentTempo()` ×1000 units (P1, observed on real FL), undo order (§8.3)
 - `mixassist/fl/curves.py`: volume and EQ tables (P3, P4)
 - `mixassist/tools/fl_tools.py`: readback delay (P5)
 
@@ -90,7 +90,9 @@ Steps: finish setup, then run
 MIXASSIST_REALFL=1 .venv/bin/python -m pytest tests/test_bridge.py -m realfl -s
 ```
 
-Record: median, max and min round trip; FL API version; script port; the `bpm` value from `--probe p6` or `fl_get_mix_overview` (it should equal the project tempo, which confirms that `getCurrentTempo()` returns BPM).
+Record: median, max and min round trip; FL API version; script port; the `bpm` value from `--probe p6` or `fl_get_mix_overview` (it should equal the project tempo).
+
+**Observed on FL API 45, Oct 25 2026: `getCurrentTempo()` returned 130000 for 130 BPM.** This is a real-FL observation (user's FL Studio over the IAC bridge, `GET /api/mix` showed `"bpm": 130000.0`), not a full P1 run. The stubs only say `getCurrentTempo(asInt=False) -> float`, "current tempo", with no units; the value matches the `REC_Tempo` storage form (`1000 * tempo`). Fix: the device script divides values above 1000 by 1000 (`TEMPO_X1000_ABOVE`), and `FLClient` does the same for any `transport` reply, logging one warning, so an outdated installed script still gives true BPM. `FakeFL(tempo_x1000=True)` mimics the raw value in tests. When P1 is run, check that `bpm` now equals the project tempo, including a fractional tempo such as 128.5.
 
 - **Pass:** reply in under 100 ms, and api ≥ 35 logged.
 - **Fallback:** API < 35: disable `eq_*`, and F5 proposes level and pan only. The device already answers `eq_get`/`eq_set` with `err` below 35. No reply at all: check Script output for errors, then vendor rosasynthesiz's bridge (MIT).
