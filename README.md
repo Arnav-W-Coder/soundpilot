@@ -1,41 +1,51 @@
 # SoundPilot
 
-Open-source music production assistant prototype powered by a future Gemma 4 + MCP + REAPER integration.
+A warm, vinyl-studio-inspired interface for the **FL Mixing Assistant** open-source AI/MCP project.
 
-## Frontend (demo mode)
+## Running the frontend
 
-The React + Vite frontend provides a charcoal/orange track dashboard, selectable track inspector, mute/solo controls, adjustable volume sliders, and an AI assistant workspace with a rule-based demo planner, reviewable proposals, apply/discard controls, and undo.
+Requires Node.js 20.19+.
 
-**This commit does not contain a real Gemma, MCP or DAW integration.** The demo does not edit audio or communicate with a DAW yet.
-
-## Local startup
-
-Install Node.js 20.19+ and run:
-
-```bash
-npm install
-npm run dev
+```powershell
+npm.cmd install
+npm.cmd run dev
 ```
 
-Open http://127.0.0.1:5173. To build:
+Open http://127.0.0.1:5173. For a production build:
 
-```bash
-npm run build
-npm run preview
+```powershell
+npm.cmd run build
+npm.cmd run preview
 ```
 
-## Future integration
+## Implemented UI
 
-React frontend → FastAPI → Ollama Cloud (Gemma 4) → MCP Python server → local REAPER Lua bridge. Keep model credentials server-side and never embed them into the Vite frontend.
+- Read-only session/track overview with a DAW-style arrangement mock, selected-track inspector, insert list, level, pan, stereo separation and EQ metadata.
+- AI assistant with a **rule-based demo planner**, reviewable before/after track changes, approval, discard, and undo of simulated changes.
+- Mix intelligence panel: mixer overview and a sample peak-watch report.
+- Audio analysis panel: audio and reference selection, illustrative loudness/true-peak/dynamic-range results, complaint diagnosis, and a verification-file affordance.
+- MIDI workbench: MIDI file selection, illustrative note/key/timing analysis, quantize/humanize/snap-to-scale parameters and live audition/recording request previews.
+- Custom SVG record/waveform branding; reduced logo shadow and roomier wordmark.
 
-## Team workflow
+**No audio files are processed, no MIDI is parsed, no audio is played, and no external app is modified.** Every analysis metric is fixture data. Filenames are not uploaded. The app does not yet connect to FL Studio, Gemma 4, or MCP. The UI is not proof of the underlying features.
 
-Develop features in separate branches and merge via reviewed pull requests. Open issues for the frontend, agent planner, MCP server and DAW bridge.
+## Target architecture
 
-## Studio visual refresh
+Ollama + Gemma 4 (model access), MCP over stdio, Python 3.11 server with `numpy`, `scipy`, `soundfile`, `pyloudnorm`, `mido`, and `python-rtmidi`; loopMIDI device-script bridge to FL Studio. The FL bridge protocol and future tool contracts are specified separately in the team's **FL Mixing Assistant v1 build spec**. Do not substitute the previous REAPER/Lua architecture.
 
-The UI now uses espresso-charcoal surfaces, warm amber highlights, a custom scalable vinyl/waveform SVG brand mark, and an illustrated vinyl record hero. The track overview is intentionally **read-only** (no sliders or mixer mute/solo controls): select a track to inspect level, pan, FX chain, and illustrative clip arrangement. A dedicated assistant view can propose volume, mute, and effect edits. You can approve/discard plans and undo applied demo changes.
+### UI-to-tool mapping (planned only)
 
-The arrangement clips are decorative placeholders, not live audio waveforms. All project values remain simulated; this build does not yet connect FL Studio, REAPER, MCP, or Gemma.
+| UI | MCP interface |
+| --- | --- |
+| Track overview | `fl_get_mix_overview` |
+| Assistant changes / undo | `fl_set_track`, `fl_undo` |
+| Peak watch | `fl_watch_peaks` |
+| Audio measurement | `analyze_audio` |
+| Diagnosis / follow-up | `diagnose_complaint`, `verify_fix` |
+| MIDI workbench | `analyze_midi`, `fix_midi`, `fl_play_midi` |
 
-To refresh an existing clone, run `git pull`, then `npm.cmd install` and `npm.cmd run dev` in PowerShell.
+Keep approval for all writes. Never present example analysis or a simulated change as verified FL Studio state. Track references may be case-insensitive names or integer indices; ambiguous matches must require disambiguation before any live edit.
+
+## Collaboration
+
+Work in feature branches and merge through pull requests. Keep all API keys out of browser code.
