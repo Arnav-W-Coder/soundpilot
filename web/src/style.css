@@ -136,3 +136,117 @@
 .midiPlayback{margin-top:28px;padding-top:6px;border-top:1px solid #5c3d2c}
 .inlinePanel{margin-top:18px}
 @media(max-width:650px){.levelvalue{width:70px}.levelscale span:not(:first-child):not(:last-child){display:none}.offlineBanner{flex-direction:column;align-items:flex-start}}
+
+
+/* Responsive layout hardening: prevent text and controls from crossing panel edges. */
+html,body,#root{width:100%;min-width:0}
+.shell{width:100%;min-width:0}
+.mainstage{flex:1 1 0;width:auto;min-width:0;max-width:1700px}
+.rail{box-sizing:border-box}
+.railitem{min-width:0;white-space:normal;overflow-wrap:break-word;line-height:1.35}
+.identity{min-width:0;gap:13px;padding-left:6px;padding-right:3px}
+.identitytext{min-width:0;flex:1;overflow:hidden}
+.identitytext strong{font-size:clamp(11px,1.05vw,14px);letter-spacing:.055em;white-space:nowrap}
+.identitytext span{white-space:normal;overflow-wrap:anywhere;line-height:1.5;letter-spacing:.085em}
+.identity .recordmark{width:40px;height:40px}
+.railcount{flex-shrink:0}
+.heroCopy,.sectiontop>div,.surfaceHeading>div,.sessionStats>div,.detailPanel,.proposalPanel,.toolsurface,.conversation,.toolPageIntro>div{min-width:0}
+.heroCopy{flex:1 1 0}
+.hero h1{overflow-wrap:normal}
+.hero p,.toolPageIntro p,.surfaceHeading p,.detailcopy,.report p,.report small,.aiBubble p,.planitem p,.offlineBanner,.toolHint{overflow-wrap:anywhere}
+.topbar>span,.topright{min-width:0;overflow-wrap:anywhere}
+.topright{text-align:right;max-width:60%}
+.sectiontop h2,.toolPageIntro h2,.surfaceHeading h3,.detailPanel h3,.proposalPanel h3{overflow-wrap:anywhere}
+.sectionactions{flex:0 0 auto;flex-wrap:wrap}
+.sectionactions button{min-width:0}
+.sessionStats{min-width:0}
+.sessionStats strong{overflow-wrap:anywhere;word-break:normal}
+.studioGrid,.toolColumns{min-width:0}
+.studioGrid>*{min-width:0}
+.surfaceHeading{flex-wrap:wrap}
+.filterline{flex-wrap:wrap;min-width:0}
+.filterline input,.filterline select{min-width:0}
+.trackmeta,.trackmeta>div,.levelcell,.leveltrack{min-width:0}
+.trackmeta strong,.trackmeta small{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.trackrow,.ruler{grid-template-columns:minmax(120px,38%) minmax(0,1fr)}
+.levelvalue{width:80px}
+.detailRows div{align-items:start}
+.detailRows strong{text-align:right;overflow-wrap:anywhere;min-width:0}
+.fxlist>div,.metricrow,.mixRow>span,.planitem,.activity p{min-width:0;overflow-wrap:anywhere}
+.promptfooter form,.composer{min-width:0}
+.promptchips button,.accentButton,.subtleButton,.detailcta{max-width:100%;white-space:normal;overflow-wrap:anywhere}
+.aiBubble,.humanBubble{min-width:0;overflow-wrap:anywhere}
+.trace,.traceitem,.rawjson{min-width:0;overflow-wrap:anywhere}
+.offlineBanner>div{min-width:0}
+footer span{min-width:0;overflow-wrap:anywhere}
+
+/* Collapse the wordmark before it becomes cramped, retaining navigable icons. */
+@media(max-width:1180px){
+  .rail{width:76px;padding:22px 9px}
+  .identity{padding:0 0 31px;justify-content:center;gap:0}
+  .identity .recordmark{width:43px;height:43px}
+  .identitytext,.railcaption,.railend{display:none}
+  .rail nav{gap:8px}
+  .railitem{position:relative;justify-content:center;padding:13px 8px;font-size:0;line-height:1}
+  .navglyph{font-size:22px;flex:none}
+  .railcount{position:absolute;right:0;top:3px;margin:0;font-size:10px}
+  .mainstage{padding-inline:clamp(16px,2.4vw,30px)}
+  .studioGrid{grid-template-columns:minmax(0,1fr) minmax(230px,29%)}
+  .heroVisual{min-width:185px;flex:0 1 32%}
+}
+@media(max-width:990px){
+  .studioGrid,.toolColumns{grid-template-columns:minmax(0,1fr)}
+  .heroVisual{flex-basis:27%;min-width:140px}
+  .sectiontop{align-items:start;flex-wrap:wrap}
+  .sectionactions{margin-left:auto}
+  .filterline{flex-direction:row}
+  .filterline input,.filterline select{max-width:none;flex:1 1 140px}
+}
+@media(max-width:760px){
+  .topright{display:none}
+  .heroVisual{display:none}
+  .heroCopy{max-width:100%}
+  .hero{height:auto;min-height:220px;padding-bottom:22px}
+  .hero h1{font-size:clamp(29px,6vw,42px)}
+  .sessionStats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .sessionStats>div:nth-child(2){border-right:0}
+  .sessionStats>div:nth-child(-n+2){border-bottom:1px solid #64432e}
+  .ruler,.trackrow{grid-template-columns:minmax(104px,41%) minmax(0,1fr)}
+  .ruler{padding-inline:10px}
+  .trackrow{padding-inline:10px}
+  .levelcell{gap:6px}
+  .levelvalue{width:65px;font-size:10px}
+  .sectionactions{width:100%}
+  .sectionactions button{flex:1 1 145px}
+  .timelinefooter{flex-wrap:wrap}
+}
+@media(max-width:480px){
+  .rail{width:56px;padding:18px 5px}
+  .identity .recordmark{width:38px;height:38px}
+  .mainstage{padding-inline:10px}
+  .hero h1{letter-spacing:-1.1px}
+  .sectiontop h2{font-size:21px}
+  .sessionStats>div{padding:13px 10px}
+  .sessionStats strong{font-size:18px}
+  .sessionStats strong.statSmall{font-size:12px}
+  .surfaceHeading,.detailPanel,.proposalPanel,.toolsurface{padding:15px}
+  .ruler,.trackrow{grid-template-columns:minmax(90px,44%) minmax(0,1fr)}
+  .trackmeta{gap:5px}
+  .trackstripe{flex-shrink:0}
+  .levelcell{flex-direction:column;justify-content:center;align-items:stretch;gap:4px}
+  .leveltrack{flex:none;height:8px}
+  .levelvalue{width:auto;text-align:left}
+  .levelvalue em{display:inline;margin-left:6px}
+  .levelscale span{font-size:8px}
+  .filterline{flex-direction:column}
+  .filterline input,.filterline select{width:100%;flex:auto}
+  .metricTiles{grid-template-columns:minmax(0,1fr)}
+  .dialogue{padding:13px}
+  .aiBubble,.humanBubble{max-width:100%;padding:12px}
+  .promptfooter{padding:13px}
+  .promptfooter form{flex-direction:column}
+  .offlineBanner{flex-direction:column;align-items:stretch}
+  .toolPageIntro{align-items:start}
+  .toolPageIntro h2{font-size:21px}
+  footer{font-size:8px}
+}
