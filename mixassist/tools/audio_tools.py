@@ -4,9 +4,13 @@ Each takes the schema-validated args dict and returns the §3.2 output; failures
 """
 from __future__ import annotations
 
-from mixassist import analysis
+from mixassist import analysis, complaints
 
 
 def analyze_audio(args: dict) -> dict:
     return analysis.analyze(args["path"], args.get("reference_path"))
+
+
+def diagnose_complaint(args: dict) -> dict:
+    return complaints.diagnose(args["complaint"], args["analysis_id"], args.get("track"))
 

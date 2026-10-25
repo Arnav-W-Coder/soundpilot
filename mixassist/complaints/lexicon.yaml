@@ -1,0 +1,89 @@
+# Complaint lexicon for diagnose_complaint / verify_fix (spec F5).
+#
+# Phrases match case-insensitively on word boundaries; hyphens count as spaces ("hi-hats" = "hi hats").
+# The longest overlapping phrase wins, and a phrase right after a negation ("not", "isn't", ...) is skipped.
+# User wording sources ([U1]-[U5], spec section 0): [U1] "thin and brittle", "harsh" hi-hats/cymbals;
+# [U2] "muddy", "boxy build-up" 200-500 Hz; [U3] "out of key", "notes are clashing"; [U4] "robotic and
+# unnatural"; [U5] "drowning out one another".
+#
+# measure.kind:
+#   band       mean level of `bands` vs the loudness-matched reference, else vs a line fitted to
+#              third_octave_db 50 Hz-16 kHz; fires when the excess (or deficit) >= threshold_db
+#   loud       true_peak_dbtp > max_true_peak_dbtp, or crest_db < min_crest_db
+#   quiet      reference.lufs_diff < max_lufs_diff (needs a reference)
+#   corr_mean  correlation_mean > above
+#   corr_p5    correlation_p5 < below
+# change.kind: eq (fl_set_track EQ band; gain = sign * clamp(excess, min_db, max_db)), volume, width,
+#   guidance (no proposal)
+
+descriptors:
+  bright:
+    label: the highs
+    phrases: [too bright, bright, brittle, tinny, piercing, sizzly, sizzling, too much treble,
+              too much top end, shrill, too crisp, airy, too much air]
+    measure: {kind: band, bands: [5k-10k, 10k-20k], direction: excess, threshold_db: 2.0}
+    change: {kind: eq, eq_band: high, eq_freq_hz: 8000, sign: -1, min_db: 2, max_db: 6}
+
+  harsh:
+    label: the upper mids
+    phrases: [harsh, harshness, harsh hi hats, harsh hats, harsh cymbals, hi hats are harsh,
+              cymbals are harsh, ear piercing, abrasive, grating, painful, fatiguing, honky, nasal]
+    measure: {kind: band, bands: [2k-5k], direction: excess, threshold_db: 2.0}
+    change: {kind: eq, eq_band: mid, eq_freq_hz: 3500, sign: -1, min_db: 2, max_db: 5}
+
+  muddy:
+    label: the low mids
+    phrases: [muddy, mud, muddiness, boxy, boxiness, cloudy, cluttered, murky, congested,
+              build up, buildup, drowning out, drowning each other out, drowning out one another,
+              everything blends together]
+    measure: {kind: band, bands: [150-500], direction: excess, threshold_db: 2.0}
+    change: {kind: eq, eq_band: mid, eq_freq_hz: 300, sign: -1, min_db: 2, max_db: 4}
+
+  boomy:
+    label: the low end
+    phrases: [boomy, boominess, too much bass, too bassy, bass heavy, bass is overpowering,
+              woofy, rumbly, too much low end, bloated]
+    measure: {kind: band, bands: [60-150], direction: excess, threshold_db: 2.0}
+    change: {kind: eq, eq_band: low, sign: -1, min_db: 2, max_db: 6}
+
+  thin:
+    label: the body
+    phrases: [thin, weak, no body, no meat, lacks body, lacking body, no low end, not enough bass,
+              no bass, lacks bass, no warmth, lacks warmth, hollow low end]
+    measure: {kind: band, bands: [60-150, 150-500], direction: deficit, threshold_db: 2.0}
+    change: {kind: eq, eq_band: low, sign: 1, min_db: 1, max_db: 4}
+
+  loud:
+    label: peaks and loudness
+    phrases: [too loud, distorted, distortion, distorting, clipping, clips, clipped, crunchy,
+              crackling, over compressed, squashed, overloaded, peaking]
+    measure: {kind: loud, max_true_peak_dbtp: -1.0, min_crest_db: 6.0}
+    change: {kind: volume}
+
+  quiet:
+    label: overall loudness
+    phrases: [too quiet, quiet, quieter than other songs, not loud enough, lacks loudness,
+              too soft, low volume]
+    measure: {kind: quiet, max_lufs_diff: -2.0}
+    change: {kind: guidance}
+
+  narrow:
+    label: stereo width
+    phrases: [narrow, too narrow, mono, sounds mono, not wide, not wide enough, lacks width, no width,
+              no stereo]
+    measure: {kind: corr_mean, above: 0.95}
+    change: {kind: width, stereo_width_pct: 30}
+
+  phasey:
+    label: phase
+    phrases: [phasey, phasy, hollow, out of phase, phase issues, phasing, disappears in mono,
+              collapses in mono]
+    measure: {kind: corr_p5, below: 0.0}
+    change: {kind: width, stereo_width_pct: -30}
+
+# Not measurable from an audio file: routed to analyze_midi / fix_midi.
+midi:
+  out_of_key: [out of key, off key, wrong notes, wrong note, notes are clashing, clashing notes,
+               clashing, sour notes, dissonant]
+  robotic: [robotic, unnatural, stiff, mechanical, too quantized, lifeless, sloppy timing,
+            off beat, off time, out of time]
