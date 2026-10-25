@@ -35,7 +35,7 @@ def documents_candidates(platform: str | None = None, environ=None, home: Path |
         if personal:
             import re
             expanded = re.sub(r"%([^%]+)%", lambda m: env.get(m.group(1), m.group(0)), personal)
-            add(os.path.expanduser(expanded))
+            add(os.path.expanduser(expanded.replace("\\\\", os.sep)))
         if env.get("OneDrive"):
             add(Path(env["OneDrive"]) / "Documents")
         if env.get("OneDriveCommercial"):
