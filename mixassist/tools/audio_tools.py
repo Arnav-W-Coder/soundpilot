@@ -14,3 +14,6 @@ def analyze_audio(args: dict) -> dict:
 def diagnose_complaint(args: dict) -> dict:
     return complaints.diagnose(args["complaint"], args["analysis_id"], args.get("track"))
 
+
+def verify_fix(args: dict) -> dict:
+    return complaints.verify(args["complaint"], args["before_analysis_id"], args["after_path"])
