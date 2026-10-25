@@ -12,7 +12,7 @@ const initial=[
 const prompts=["Make the vocals stand out","Lower the drums by 3 dB","Mute the guitar","Add compression to the vocals"];
 const clamp=n=>Math.min(12,Math.max(-60,Math.round(n*10)/10));
 function planFor(text,tracks){let t=text.toLowerCase();let match=tracks.find(x=>t.includes(x.name.toLowerCase())||t.includes(x.type.toLowerCase()))||tracks.find(x=>t.includes("vocal")&&x.type==="Vocal")||tracks[0];let changes=[];
-let amount=Number((t.match(/(\\d+(?:\\.\\d+)?)\\s*(?:db|decibels)/)||[])[1]|| (t.includes("mute")?0:2));
+let amount=Number((t.match(/(\d+(?:\.\d+)?)\s*(?:db|decibels)/)||[])[1]|| (t.includes("mute")?0:2));
 if(t.includes("mute")&&!t.includes("unmute"))changes.push({id:match.id,field:"mute",before:match.mute,after:true,label:"Mute "+match.name});
 else if(t.includes("unmute"))changes.push({id:match.id,field:"mute",before:match.mute,after:false,label:"Unmute "+match.name});
 else if(t.includes("compress")||t.includes("compression"))changes.push({id:match.id,field:"fx",before:match.fx,after:[...new Set([...match.fx,"ReaComp"])],label:"Add ReaComp to "+match.name});
