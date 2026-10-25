@@ -7,8 +7,8 @@ Re-running it (Ctrl+Alt+Y) re-reads the file: PROBE P7.
 from __future__ import annotations
 
 import os
-import sys
 
+from mixassist.fl.paths import find_fl_subdir
 from mixassist.errors import ToolError
 from mixassist.midi.io import Note
 
@@ -67,11 +67,8 @@ def default_script_dir() -> str | None:
     override = os.environ.get(PYSCRIPT_DIR_ENV)
     if override:
         return os.path.expanduser(override)
-    docs = os.path.expanduser("~/Documents")
-    if sys.platform == "win32":
-        docs = os.path.join(os.environ.get("USERPROFILE", os.path.expanduser("~")), "Documents")
-    d = os.path.join(docs, "Image-Line", "FL Studio", "Settings", "Piano roll scripts")
-    return d if os.path.isdir(d) else None
+    found = find_fl_subdir("Piano roll scripts")
+    return str(found) if found else None
 
 
 def render(notes: list[Note], source: str = "") -> str:
