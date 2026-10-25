@@ -40,6 +40,20 @@ class VirtualClock:
         self.t += max(0.0, float(seconds))
 
 
+class SkipClock:
+    """Real-time clock whose ``advance`` skips ahead instead of blocking (demo server: a 30 s
+    peak watch on FakeFL returns at once, while code that spins on the clock still works)."""
+
+    def __init__(self):
+        self.offset = 0.0
+
+    def __call__(self) -> float:
+        return time.monotonic() + self.offset
+
+    def advance(self, seconds: float) -> None:
+        self.offset += max(0.0, float(seconds))
+
+
 class FakeFL:
     def __init__(
         self,

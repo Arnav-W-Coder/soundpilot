@@ -17,9 +17,9 @@ _lock = threading.Lock()
 def make_client(backend: str | None = None) -> FLClient:
     backend = (backend or os.environ.get("SOUNDPILOT_FL") or "fake").lower()
     if backend == "fake":
-        from mixassist.fl.fake import FakeTransport, default_fake
+        from mixassist.fl.fake import FakeTransport, SkipClock, default_fake
 
-        return FLClient(FakeTransport(default_fake()), "fake")
+        return FLClient(FakeTransport(default_fake(clock=SkipClock())), "fake")
     if backend == "bridge":
         try:
             from mixassist.fl.bridge import BridgeTransport
