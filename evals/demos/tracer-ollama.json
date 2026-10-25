@@ -1,0 +1,1545 @@
+{
+ "meta": {
+  "demo": "tracer",
+  "llm": "ollama",
+  "model": "gemma4:31b-cloud",
+  "started": "2026-10-25T21:39:34.473894+00:00",
+  "passed": true
+ },
+ "checks": [
+  {
+   "check": "model available",
+   "passed": true,
+   "detail": "ollama: model gemma4:31b-cloud is pulled"
+  },
+  {
+   "check": "Gemma proposed fl_set_track",
+   "passed": true,
+   "detail": "[\"fl_set_track\"]"
+  },
+  {
+   "check": "proposal targets Kick",
+   "passed": true,
+   "detail": "Kick: volume 0.0 dB -> -2.0 dB"
+  },
+  {
+   "check": "FL unchanged before approval",
+   "passed": true,
+   "detail": ""
+  },
+  {
+   "check": "readback -2.0 +/- 0.25 dB",
+   "passed": true,
+   "detail": "after=-2.0"
+  },
+  {
+   "check": "verified",
+   "passed": true,
+   "detail": ""
+  },
+  {
+   "check": "mix shows Kick at -2 dB",
+   "passed": true,
+   "detail": "-2.0"
+  },
+  {
+   "check": "Gemma proposed fl_undo",
+   "passed": true,
+   "detail": "[\"fl_undo\"]"
+  },
+  {
+   "check": "undo restores 0.0 +/- 0.1 dB",
+   "passed": true,
+   "detail": "restored=0.0"
+  }
+ ],
+ "log": [
+  {
+   "request": "GET /api/status",
+   "body": null,
+   "status": 200,
+   "seconds": 0.0,
+   "response": {
+    "fl_backend": "fake",
+    "fl_connected": true,
+    "llm_provider": "ollama",
+    "model": "gemma4:31b-cloud",
+    "model_available": true,
+    "model_message": "ollama: model gemma4:31b-cloud is pulled",
+    "fl_api": 36
+   },
+   "note": ""
+  },
+  {
+   "request": "GET /api/mix",
+   "body": null,
+   "status": 200,
+   "seconds": 0.0,
+   "response": {
+    "fl_api": 36,
+    "bpm": 120.0,
+    "tracks": [
+     {
+      "index": 0,
+      "name": "Master",
+      "volume_db": 0.0,
+      "pan_pct": 0.0,
+      "stereo_width_pct": 0.0,
+      "muted": false,
+      "solo": false,
+      "eq": [
+       {
+        "band": "low",
+        "gain_db": 0.0,
+        "freq_hz": 112.5
+       },
+       {
+        "band": "mid",
+        "gain_db": 0.0,
+        "freq_hz": 893.4
+       },
+       {
+        "band": "high",
+        "gain_db": 0.0,
+        "freq_hz": 7096.3
+       }
+      ],
+      "plugins": [
+       {
+        "slot": 0,
+        "name": "Fruity Limiter"
+       }
+      ]
+     },
+     {
+      "index": 1,
+      "name": "Kick",
+      "volume_db": 0.0,
+      "pan_pct": 0.0,
+      "stereo_width_pct": 0.0,
+      "muted": false,
+      "solo": false,
+      "eq": [
+       {
+        "band": "low",
+        "gain_db": 0.0,
+        "freq_hz": 112.5
+       },
+       {
+        "band": "mid",
+        "gain_db": 0.0,
+        "freq_hz": 893.4
+       },
+       {
+        "band": "high",
+        "gain_db": 0.0,
+        "freq_hz": 7096.3
+       }
+      ],
+      "plugins": [
+       {
+        "slot": 0,
+        "name": "Fruity Parametric EQ 2"
+       },
+       {
+        "slot": 1,
+        "name": "Fruity Compressor"
+       }
+      ]
+     },
+     {
+      "index": 2,
+      "name": "Snare",
+      "volume_db": -2.5,
+      "pan_pct": 0.0,
+      "stereo_width_pct": 0.0,
+      "muted": false,
+      "solo": false,
+      "eq": [
+       {
+        "band": "low",
+        "gain_db": 0.0,
+        "freq_hz": 112.5
+       },
+       {
+        "band": "mid",
+        "gain_db": 0.0,
+        "freq_hz": 893.4
+       },
+       {
+        "band": "high",
+        "gain_db": 0.0,
+        "freq_hz": 7096.3
+       }
+      ],
+      "plugins": [
+       {
+        "slot": 0,
+        "name": "Fruity Reeverb 2"
+       }
+      ]
+     },
+     {
+      "index": 3,
+      "name": "Clap",
+      "volume_db": -4.0,
+      "pan_pct": 10.0,
+      "stereo_width_pct": 0.0,
+      "muted": false,
+      "solo": false,
+      "eq": [
+       {
+        "band": "low",
+        "gain_db": 0.0,
+        "freq_hz": 112.5
+       },
+       {
+        "band": "mid",
+        "gain_db": 0.0,
+        "freq_hz": 893.4
+       },
+       {
+        "band": "high",
+        "gain_db": 0.0,
+        "freq_hz": 7096.3
+       }
+      ],
+      "plugins": []
+     },
+     {
+      "index": 4,
+      "name": "Hat Open",
+      "volume_db": -8.0,
+      "pan_pct": 30.0,
+      "stereo_width_pct": 0.0,
+      "muted": false,
+      "solo": false,
+      "eq": [
+       {
+        "band": "low",
+        "gain_db": 0.0,
+        "freq_hz": 112.5
+       },
+       {
+        "band": "mid",
+        "gain_db": 0.0,
+        "freq_hz": 893.4
+       },
+       {
+        "band": "high",
+        "gain_db": 0.0,
+        "freq_hz": 7096.3
+       }
+      ],
+      "plugins": [
+       {
+        "slot": 0,
+        "name": "Fruity Filter"
+       }
+      ]
+     },
+     {
+      "index": 5,
+      "name": "Hat Closed",
+      "volume_db": -7.0,
+      "pan_pct": -25.0,
+      "stereo_width_pct": 0.0,
+      "muted": false,
+      "solo": false,
+      "eq": [
+       {
+        "band": "low",
+        "gain_db": 0.0,
+        "freq_hz": 112.5
+       },
+       {
+        "band": "mid",
+        "gain_db": 0.0,
+        "freq_hz": 893.4
+       },
+       {
+        "band": "high",
+        "gain_db": 0.0,
+        "freq_hz": 7096.3
+       }
+      ],
+      "plugins": []
+     },
+     {
+      "index": 6,
+      "name": "Bass",
+      "volume_db": -3.0,
+      "pan_pct": 0.0,
+      "stereo_width_pct": 0.0,
+      "muted": false,
+      "solo": false,
+      "eq": [
+       {
+        "band": "low",
+        "gain_db": 2.0,
+        "freq_hz": 80.0
+       },
+       {
+        "band": "mid",
+        "gain_db": 0.0,
+        "freq_hz": 893.4
+       },
+       {
+        "band": "high",
+        "gain_db": 0.0,
+        "freq_hz": 7096.3
+       }
+      ],
+      "plugins": [
+       {
+        "slot": 0,
+        "name": "Fruity Parametric EQ 2"
+       },
+       {
+        "slot": 1,
+        "name": "Fruity Compressor"
+       },
+       {
+        "slot": 2,
+        "name": "Fruity Blood Overdrive"
+       }
+      ]
+     },
+     {
+      "index": 7,
+      "name": "Sub",
+      "volume_db": -6.0,
+      "pan_pct": 0.0,
+      "stereo_width_pct": 0.0,
+      "muted": false,
+      "solo": false,
+      "eq": [
+       {
+        "band": "low",
+        "gain_db": 0.0,
+        "freq_hz": 112.5
+       },
+       {
+        "band": "mid",
+        "gain_db": 0.0,
+        "freq_hz": 893.4
+       },
+       {
+        "band": "high",
+        "gain_db": 0.0,
+        "freq_hz": 7096.3
+       }
+      ],
+      "plugins": []
+     },
+     {
+      "index": 8,
+      "name": "Lead Synth",
+      "volume_db": -5.0,
+      "pan_pct": -10.0,
+      "stereo_width_pct": 20.0,
+      "muted": false,
+      "solo": false,
+      "eq": [
+       {
+        "band": "low",
+        "gain_db": 0.0,
+        "freq_hz": 112.5
+       },
+       {
+        "band": "mid",
+        "gain_db": 0.0,
+        "freq_hz": 893.4
+       },
+       {
+        "band": "high",
+        "gain_db": 0.0,
+        "freq_hz": 7096.3
+       }
+      ],
+      "plugins": [
+       {
+        "slot": 0,
+        "name": "Fruity Delay 3"
+       },
+       {
+        "slot": 1,
+        "name": "Fruity Reeverb 2"
+       }
+      ]
+     },
+     {
+      "index": 9,
+      "name": "Pad",
+      "volume_db": -10.0,
+      "pan_pct": 0.0,
+      "stereo_width_pct": 50.0,
+      "muted": false,
+      "solo": false,
+      "eq": [
+       {
+        "band": "low",
+        "gain_db": -3.0,
+        "freq_hz": 112.5
+       },
+       {
+        "band": "mid",
+        "gain_db": 0.0,
+        "freq_hz": 893.4
+       },
+       {
+        "band": "high",
+        "gain_db": 1.5,
+        "freq_hz": 7096.3
+       }
+      ],
+      "plugins": [
+       {
+        "slot": 0,
+        "name": "Fruity Chorus"
+       }
+      ]
+     },
+     {
+      "index": 10,
+      "name": "Vocal",
+      "volume_db": -1.5,
+      "pan_pct": 0.0,
+      "stereo_width_pct": 0.0,
+      "muted": false,
+      "solo": false,
+      "eq": [
+       {
+        "band": "low",
+        "gain_db": 0.0,
+        "freq_hz": 112.5
+       },
+       {
+        "band": "mid",
+        "gain_db": 0.0,
+        "freq_hz": 893.4
+       },
+       {
+        "band": "high",
+        "gain_db": 0.0,
+        "freq_hz": 7096.3
+       }
+      ],
+      "plugins": [
+       {
+        "slot": 0,
+        "name": "Fruity Parametric EQ 2"
+       },
+       {
+        "slot": 1,
+        "name": "Fruity Compressor"
+       },
+       {
+        "slot": 2,
+        "name": "Fruity Reeverb 2"
+       }
+      ]
+     },
+     {
+      "index": 11,
+      "name": "FX",
+      "volume_db": -12.0,
+      "pan_pct": 50.0,
+      "stereo_width_pct": 0.0,
+      "muted": false,
+      "solo": false,
+      "eq": [
+       {
+        "band": "low",
+        "gain_db": 0.0,
+        "freq_hz": 112.5
+       },
+       {
+        "band": "mid",
+        "gain_db": 0.0,
+        "freq_hz": 893.4
+       },
+       {
+        "band": "high",
+        "gain_db": 0.0,
+        "freq_hz": 7096.3
+       }
+      ],
+      "plugins": [
+       {
+        "slot": 0,
+        "name": "Fruity Flanger"
+       }
+      ]
+     },
+     {
+      "index": 12,
+      "name": "Reverb Bus",
+      "volume_db": -9.0,
+      "pan_pct": 0.0,
+      "stereo_width_pct": 40.0,
+      "muted": false,
+      "solo": false,
+      "eq": [
+       {
+        "band": "low",
+        "gain_db": 0.0,
+        "freq_hz": 112.5
+       },
+       {
+        "band": "mid",
+        "gain_db": 0.0,
+        "freq_hz": 893.4
+       },
+       {
+        "band": "high",
+        "gain_db": 0.0,
+        "freq_hz": 7096.3
+       }
+      ],
+      "plugins": [
+       {
+        "slot": 0,
+        "name": "Fruity Reeverb 2"
+       }
+      ]
+     }
+    ]
+   },
+   "note": ""
+  },
+  {
+   "request": "POST /api/chat",
+   "body": {
+    "session_id": "tracer",
+    "message": "turn the kick down 2 dB"
+   },
+   "status": 200,
+   "seconds": 1.28,
+   "response": {
+    "reply": "Proposed: Kick volume -2 dB.",
+    "tool_trace": [
+     {
+      "tool": "fl_set_track",
+      "args": {
+       "track": "Kick",
+       "volume_change_db": -2
+      },
+      "result": {
+       "status": "proposed",
+       "proposal_id": "p_5f2ae8",
+       "summary": "Kick: volume 0.0 dB -> -2.0 dB",
+       "note": "Not applied yet: the user approves it in the SoundPilot panel."
+      }
+     }
+    ],
+    "proposals": [
+     {
+      "proposal_id": "p_5f2ae8",
+      "tool": "fl_set_track",
+      "args": {
+       "track": "Kick",
+       "volume_change_db": -2
+      },
+      "why": "You asked: \"turn the kick down 2 dB\"",
+      "status": "pending",
+      "preview": {
+       "track": {
+        "index": 1,
+        "name": "Kick"
+       },
+       "changes": [
+        {
+         "field": "volume_db",
+         "before": 0.0,
+         "after": -2.0,
+         "unit": "dB"
+        }
+       ],
+       "summary": "Kick: volume 0.0 dB -> -2.0 dB"
+      }
+     }
+    ],
+    "needs_clarification": false
+   },
+   "note": ""
+  },
+  {
+   "request": "GET /api/mix",
+   "body": null,
+   "status": 200,
+   "seconds": 0.0,
+   "response": {
+    "fl_api": 36,
+    "bpm": 120.0,
+    "tracks": [
+     {
+      "index": 0,
+      "name": "Master",
+      "volume_db": 0.0,
+      "pan_pct": 0.0,
+      "stereo_width_pct": 0.0,
+      "muted": false,
+      "solo": false,
+      "eq": [
+       {
+        "band": "low",
+        "gain_db": 0.0,
+        "freq_hz": 112.5
+       },
+       {
+        "band": "mid",
+        "gain_db": 0.0,
+        "freq_hz": 893.4
+       },
+       {
+        "band": "high",
+        "gain_db": 0.0,
+        "freq_hz": 7096.3
+       }
+      ],
+      "plugins": [
+       {
+        "slot": 0,
+        "name": "Fruity Limiter"
+       }
+      ]
+     },
+     {
+      "index": 1,
+      "name": "Kick",
+      "volume_db": 0.0,
+      "pan_pct": 0.0,
+      "stereo_width_pct": 0.0,
+      "muted": false,
+      "solo": false,
+      "eq": [
+       {
+        "band": "low",
+        "gain_db": 0.0,
+        "freq_hz": 112.5
+       },
+       {
+        "band": "mid",
+        "gain_db": 0.0,
+        "freq_hz": 893.4
+       },
+       {
+        "band": "high",
+        "gain_db": 0.0,
+        "freq_hz": 7096.3
+       }
+      ],
+      "plugins": [
+       {
+        "slot": 0,
+        "name": "Fruity Parametric EQ 2"
+       },
+       {
+        "slot": 1,
+        "name": "Fruity Compressor"
+       }
+      ]
+     },
+     {
+      "index": 2,
+      "name": "Snare",
+      "volume_db": -2.5,
+      "pan_pct": 0.0,
+      "stereo_width_pct": 0.0,
+      "muted": false,
+      "solo": false,
+      "eq": [
+       {
+        "band": "low",
+        "gain_db": 0.0,
+        "freq_hz": 112.5
+       },
+       {
+        "band": "mid",
+        "gain_db": 0.0,
+        "freq_hz": 893.4
+       },
+       {
+        "band": "high",
+        "gain_db": 0.0,
+        "freq_hz": 7096.3
+       }
+      ],
+      "plugins": [
+       {
+        "slot": 0,
+        "name": "Fruity Reeverb 2"
+       }
+      ]
+     },
+     {
+      "index": 3,
+      "name": "Clap",
+      "volume_db": -4.0,
+      "pan_pct": 10.0,
+      "stereo_width_pct": 0.0,
+      "muted": false,
+      "solo": false,
+      "eq": [
+       {
+        "band": "low",
+        "gain_db": 0.0,
+        "freq_hz": 112.5
+       },
+       {
+        "band": "mid",
+        "gain_db": 0.0,
+        "freq_hz": 893.4
+       },
+       {
+        "band": "high",
+        "gain_db": 0.0,
+        "freq_hz": 7096.3
+       }
+      ],
+      "plugins": []
+     },
+     {
+      "index": 4,
+      "name": "Hat Open",
+      "volume_db": -8.0,
+      "pan_pct": 30.0,
+      "stereo_width_pct": 0.0,
+      "muted": false,
+      "solo": false,
+      "eq": [
+       {
+        "band": "low",
+        "gain_db": 0.0,
+        "freq_hz": 112.5
+       },
+       {
+        "band": "mid",
+        "gain_db": 0.0,
+        "freq_hz": 893.4
+       },
+       {
+        "band": "high",
+        "gain_db": 0.0,
+        "freq_hz": 7096.3
+       }
+      ],
+      "plugins": [
+       {
+        "slot": 0,
+        "name": "Fruity Filter"
+       }
+      ]
+     },
+     {
+      "index": 5,
+      "name": "Hat Closed",
+      "volume_db": -7.0,
+      "pan_pct": -25.0,
+      "stereo_width_pct": 0.0,
+      "muted": false,
+      "solo": false,
+      "eq": [
+       {
+        "band": "low",
+        "gain_db": 0.0,
+        "freq_hz": 112.5
+       },
+       {
+        "band": "mid",
+        "gain_db": 0.0,
+        "freq_hz": 893.4
+       },
+       {
+        "band": "high",
+        "gain_db": 0.0,
+        "freq_hz": 7096.3
+       }
+      ],
+      "plugins": []
+     },
+     {
+      "index": 6,
+      "name": "Bass",
+      "volume_db": -3.0,
+      "pan_pct": 0.0,
+      "stereo_width_pct": 0.0,
+      "muted": false,
+      "solo": false,
+      "eq": [
+       {
+        "band": "low",
+        "gain_db": 2.0,
+        "freq_hz": 80.0
+       },
+       {
+        "band": "mid",
+        "gain_db": 0.0,
+        "freq_hz": 893.4
+       },
+       {
+        "band": "high",
+        "gain_db": 0.0,
+        "freq_hz": 7096.3
+       }
+      ],
+      "plugins": [
+       {
+        "slot": 0,
+        "name": "Fruity Parametric EQ 2"
+       },
+       {
+        "slot": 1,
+        "name": "Fruity Compressor"
+       },
+       {
+        "slot": 2,
+        "name": "Fruity Blood Overdrive"
+       }
+      ]
+     },
+     {
+      "index": 7,
+      "name": "Sub",
+      "volume_db": -6.0,
+      "pan_pct": 0.0,
+      "stereo_width_pct": 0.0,
+      "muted": false,
+      "solo": false,
+      "eq": [
+       {
+        "band": "low",
+        "gain_db": 0.0,
+        "freq_hz": 112.5
+       },
+       {
+        "band": "mid",
+        "gain_db": 0.0,
+        "freq_hz": 893.4
+       },
+       {
+        "band": "high",
+        "gain_db": 0.0,
+        "freq_hz": 7096.3
+       }
+      ],
+      "plugins": []
+     },
+     {
+      "index": 8,
+      "name": "Lead Synth",
+      "volume_db": -5.0,
+      "pan_pct": -10.0,
+      "stereo_width_pct": 20.0,
+      "muted": false,
+      "solo": false,
+      "eq": [
+       {
+        "band": "low",
+        "gain_db": 0.0,
+        "freq_hz": 112.5
+       },
+       {
+        "band": "mid",
+        "gain_db": 0.0,
+        "freq_hz": 893.4
+       },
+       {
+        "band": "high",
+        "gain_db": 0.0,
+        "freq_hz": 7096.3
+       }
+      ],
+      "plugins": [
+       {
+        "slot": 0,
+        "name": "Fruity Delay 3"
+       },
+       {
+        "slot": 1,
+        "name": "Fruity Reeverb 2"
+       }
+      ]
+     },
+     {
+      "index": 9,
+      "name": "Pad",
+      "volume_db": -10.0,
+      "pan_pct": 0.0,
+      "stereo_width_pct": 50.0,
+      "muted": false,
+      "solo": false,
+      "eq": [
+       {
+        "band": "low",
+        "gain_db": -3.0,
+        "freq_hz": 112.5
+       },
+       {
+        "band": "mid",
+        "gain_db": 0.0,
+        "freq_hz": 893.4
+       },
+       {
+        "band": "high",
+        "gain_db": 1.5,
+        "freq_hz": 7096.3
+       }
+      ],
+      "plugins": [
+       {
+        "slot": 0,
+        "name": "Fruity Chorus"
+       }
+      ]
+     },
+     {
+      "index": 10,
+      "name": "Vocal",
+      "volume_db": -1.5,
+      "pan_pct": 0.0,
+      "stereo_width_pct": 0.0,
+      "muted": false,
+      "solo": false,
+      "eq": [
+       {
+        "band": "low",
+        "gain_db": 0.0,
+        "freq_hz": 112.5
+       },
+       {
+        "band": "mid",
+        "gain_db": 0.0,
+        "freq_hz": 893.4
+       },
+       {
+        "band": "high",
+        "gain_db": 0.0,
+        "freq_hz": 7096.3
+       }
+      ],
+      "plugins": [
+       {
+        "slot": 0,
+        "name": "Fruity Parametric EQ 2"
+       },
+       {
+        "slot": 1,
+        "name": "Fruity Compressor"
+       },
+       {
+        "slot": 2,
+        "name": "Fruity Reeverb 2"
+       }
+      ]
+     },
+     {
+      "index": 11,
+      "name": "FX",
+      "volume_db": -12.0,
+      "pan_pct": 50.0,
+      "stereo_width_pct": 0.0,
+      "muted": false,
+      "solo": false,
+      "eq": [
+       {
+        "band": "low",
+        "gain_db": 0.0,
+        "freq_hz": 112.5
+       },
+       {
+        "band": "mid",
+        "gain_db": 0.0,
+        "freq_hz": 893.4
+       },
+       {
+        "band": "high",
+        "gain_db": 0.0,
+        "freq_hz": 7096.3
+       }
+      ],
+      "plugins": [
+       {
+        "slot": 0,
+        "name": "Fruity Flanger"
+       }
+      ]
+     },
+     {
+      "index": 12,
+      "name": "Reverb Bus",
+      "volume_db": -9.0,
+      "pan_pct": 0.0,
+      "stereo_width_pct": 40.0,
+      "muted": false,
+      "solo": false,
+      "eq": [
+       {
+        "band": "low",
+        "gain_db": 0.0,
+        "freq_hz": 112.5
+       },
+       {
+        "band": "mid",
+        "gain_db": 0.0,
+        "freq_hz": 893.4
+       },
+       {
+        "band": "high",
+        "gain_db": 0.0,
+        "freq_hz": 7096.3
+       }
+      ],
+      "plugins": [
+       {
+        "slot": 0,
+        "name": "Fruity Reeverb 2"
+       }
+      ]
+     }
+    ]
+   },
+   "note": "nothing applied before approval"
+  },
+  {
+   "request": "POST /api/proposals/p_5f2ae8/apply",
+   "body": null,
+   "status": 200,
+   "seconds": 0.0,
+   "response": {
+    "proposal_id": "p_5f2ae8",
+    "tool": "fl_set_track",
+    "result": {
+     "change_id": "c_6edbdc72",
+     "track": {
+      "index": 1,
+      "name": "Kick"
+     },
+     "before": {
+      "volume_db": 0.0,
+      "pan_pct": 0.0,
+      "stereo_width_pct": 0.0
+     },
+     "after": {
+      "volume_db": -2.0,
+      "pan_pct": 0.0,
+      "stereo_width_pct": 0.0
+     },
+     "verified": true,
+     "round_trips": 1
+    }
+   },
+   "note": ""
+  },
+  {
+   "request": "GET /api/mix",
+   "body": null,
+   "status": 200,
+   "seconds": 0.0,
+   "response": {
+    "fl_api": 36,
+    "bpm": 120.0,
+    "tracks": [
+     {
+      "index": 0,
+      "name": "Master",
+      "volume_db": 0.0,
+      "pan_pct": 0.0,
+      "stereo_width_pct": 0.0,
+      "muted": false,
+      "solo": false,
+      "eq": [
+       {
+        "band": "low",
+        "gain_db": 0.0,
+        "freq_hz": 112.5
+       },
+       {
+        "band": "mid",
+        "gain_db": 0.0,
+        "freq_hz": 893.4
+       },
+       {
+        "band": "high",
+        "gain_db": 0.0,
+        "freq_hz": 7096.3
+       }
+      ],
+      "plugins": [
+       {
+        "slot": 0,
+        "name": "Fruity Limiter"
+       }
+      ]
+     },
+     {
+      "index": 1,
+      "name": "Kick",
+      "volume_db": -2.0,
+      "pan_pct": 0.0,
+      "stereo_width_pct": 0.0,
+      "muted": false,
+      "solo": false,
+      "eq": [
+       {
+        "band": "low",
+        "gain_db": 0.0,
+        "freq_hz": 112.5
+       },
+       {
+        "band": "mid",
+        "gain_db": 0.0,
+        "freq_hz": 893.4
+       },
+       {
+        "band": "high",
+        "gain_db": 0.0,
+        "freq_hz": 7096.3
+       }
+      ],
+      "plugins": [
+       {
+        "slot": 0,
+        "name": "Fruity Parametric EQ 2"
+       },
+       {
+        "slot": 1,
+        "name": "Fruity Compressor"
+       }
+      ]
+     },
+     {
+      "index": 2,
+      "name": "Snare",
+      "volume_db": -2.5,
+      "pan_pct": 0.0,
+      "stereo_width_pct": 0.0,
+      "muted": false,
+      "solo": false,
+      "eq": [
+       {
+        "band": "low",
+        "gain_db": 0.0,
+        "freq_hz": 112.5
+       },
+       {
+        "band": "mid",
+        "gain_db": 0.0,
+        "freq_hz": 893.4
+       },
+       {
+        "band": "high",
+        "gain_db": 0.0,
+        "freq_hz": 7096.3
+       }
+      ],
+      "plugins": [
+       {
+        "slot": 0,
+        "name": "Fruity Reeverb 2"
+       }
+      ]
+     },
+     {
+      "index": 3,
+      "name": "Clap",
+      "volume_db": -4.0,
+      "pan_pct": 10.0,
+      "stereo_width_pct": 0.0,
+      "muted": false,
+      "solo": false,
+      "eq": [
+       {
+        "band": "low",
+        "gain_db": 0.0,
+        "freq_hz": 112.5
+       },
+       {
+        "band": "mid",
+        "gain_db": 0.0,
+        "freq_hz": 893.4
+       },
+       {
+        "band": "high",
+        "gain_db": 0.0,
+        "freq_hz": 7096.3
+       }
+      ],
+      "plugins": []
+     },
+     {
+      "index": 4,
+      "name": "Hat Open",
+      "volume_db": -8.0,
+      "pan_pct": 30.0,
+      "stereo_width_pct": 0.0,
+      "muted": false,
+      "solo": false,
+      "eq": [
+       {
+        "band": "low",
+        "gain_db": 0.0,
+        "freq_hz": 112.5
+       },
+       {
+        "band": "mid",
+        "gain_db": 0.0,
+        "freq_hz": 893.4
+       },
+       {
+        "band": "high",
+        "gain_db": 0.0,
+        "freq_hz": 7096.3
+       }
+      ],
+      "plugins": [
+       {
+        "slot": 0,
+        "name": "Fruity Filter"
+       }
+      ]
+     },
+     {
+      "index": 5,
+      "name": "Hat Closed",
+      "volume_db": -7.0,
+      "pan_pct": -25.0,
+      "stereo_width_pct": 0.0,
+      "muted": false,
+      "solo": false,
+      "eq": [
+       {
+        "band": "low",
+        "gain_db": 0.0,
+        "freq_hz": 112.5
+       },
+       {
+        "band": "mid",
+        "gain_db": 0.0,
+        "freq_hz": 893.4
+       },
+       {
+        "band": "high",
+        "gain_db": 0.0,
+        "freq_hz": 7096.3
+       }
+      ],
+      "plugins": []
+     },
+     {
+      "index": 6,
+      "name": "Bass",
+      "volume_db": -3.0,
+      "pan_pct": 0.0,
+      "stereo_width_pct": 0.0,
+      "muted": false,
+      "solo": false,
+      "eq": [
+       {
+        "band": "low",
+        "gain_db": 2.0,
+        "freq_hz": 80.0
+       },
+       {
+        "band": "mid",
+        "gain_db": 0.0,
+        "freq_hz": 893.4
+       },
+       {
+        "band": "high",
+        "gain_db": 0.0,
+        "freq_hz": 7096.3
+       }
+      ],
+      "plugins": [
+       {
+        "slot": 0,
+        "name": "Fruity Parametric EQ 2"
+       },
+       {
+        "slot": 1,
+        "name": "Fruity Compressor"
+       },
+       {
+        "slot": 2,
+        "name": "Fruity Blood Overdrive"
+       }
+      ]
+     },
+     {
+      "index": 7,
+      "name": "Sub",
+      "volume_db": -6.0,
+      "pan_pct": 0.0,
+      "stereo_width_pct": 0.0,
+      "muted": false,
+      "solo": false,
+      "eq": [
+       {
+        "band": "low",
+        "gain_db": 0.0,
+        "freq_hz": 112.5
+       },
+       {
+        "band": "mid",
+        "gain_db": 0.0,
+        "freq_hz": 893.4
+       },
+       {
+        "band": "high",
+        "gain_db": 0.0,
+        "freq_hz": 7096.3
+       }
+      ],
+      "plugins": []
+     },
+     {
+      "index": 8,
+      "name": "Lead Synth",
+      "volume_db": -5.0,
+      "pan_pct": -10.0,
+      "stereo_width_pct": 20.0,
+      "muted": false,
+      "solo": false,
+      "eq": [
+       {
+        "band": "low",
+        "gain_db": 0.0,
+        "freq_hz": 112.5
+       },
+       {
+        "band": "mid",
+        "gain_db": 0.0,
+        "freq_hz": 893.4
+       },
+       {
+        "band": "high",
+        "gain_db": 0.0,
+        "freq_hz": 7096.3
+       }
+      ],
+      "plugins": [
+       {
+        "slot": 0,
+        "name": "Fruity Delay 3"
+       },
+       {
+        "slot": 1,
+        "name": "Fruity Reeverb 2"
+       }
+      ]
+     },
+     {
+      "index": 9,
+      "name": "Pad",
+      "volume_db": -10.0,
+      "pan_pct": 0.0,
+      "stereo_width_pct": 50.0,
+      "muted": false,
+      "solo": false,
+      "eq": [
+       {
+        "band": "low",
+        "gain_db": -3.0,
+        "freq_hz": 112.5
+       },
+       {
+        "band": "mid",
+        "gain_db": 0.0,
+        "freq_hz": 893.4
+       },
+       {
+        "band": "high",
+        "gain_db": 1.5,
+        "freq_hz": 7096.3
+       }
+      ],
+      "plugins": [
+       {
+        "slot": 0,
+        "name": "Fruity Chorus"
+       }
+      ]
+     },
+     {
+      "index": 10,
+      "name": "Vocal",
+      "volume_db": -1.5,
+      "pan_pct": 0.0,
+      "stereo_width_pct": 0.0,
+      "muted": false,
+      "solo": false,
+      "eq": [
+       {
+        "band": "low",
+        "gain_db": 0.0,
+        "freq_hz": 112.5
+       },
+       {
+        "band": "mid",
+        "gain_db": 0.0,
+        "freq_hz": 893.4
+       },
+       {
+        "band": "high",
+        "gain_db": 0.0,
+        "freq_hz": 7096.3
+       }
+      ],
+      "plugins": [
+       {
+        "slot": 0,
+        "name": "Fruity Parametric EQ 2"
+       },
+       {
+        "slot": 1,
+        "name": "Fruity Compressor"
+       },
+       {
+        "slot": 2,
+        "name": "Fruity Reeverb 2"
+       }
+      ]
+     },
+     {
+      "index": 11,
+      "name": "FX",
+      "volume_db": -12.0,
+      "pan_pct": 50.0,
+      "stereo_width_pct": 0.0,
+      "muted": false,
+      "solo": false,
+      "eq": [
+       {
+        "band": "low",
+        "gain_db": 0.0,
+        "freq_hz": 112.5
+       },
+       {
+        "band": "mid",
+        "gain_db": 0.0,
+        "freq_hz": 893.4
+       },
+       {
+        "band": "high",
+        "gain_db": 0.0,
+        "freq_hz": 7096.3
+       }
+      ],
+      "plugins": [
+       {
+        "slot": 0,
+        "name": "Fruity Flanger"
+       }
+      ]
+     },
+     {
+      "index": 12,
+      "name": "Reverb Bus",
+      "volume_db": -9.0,
+      "pan_pct": 0.0,
+      "stereo_width_pct": 40.0,
+      "muted": false,
+      "solo": false,
+      "eq": [
+       {
+        "band": "low",
+        "gain_db": 0.0,
+        "freq_hz": 112.5
+       },
+       {
+        "band": "mid",
+        "gain_db": 0.0,
+        "freq_hz": 893.4
+       },
+       {
+        "band": "high",
+        "gain_db": 0.0,
+        "freq_hz": 7096.3
+       }
+      ],
+      "plugins": [
+       {
+        "slot": 0,
+        "name": "Fruity Reeverb 2"
+       }
+      ]
+     }
+    ]
+   },
+   "note": ""
+  },
+  {
+   "request": "POST /api/chat",
+   "body": {
+    "session_id": "tracer",
+    "message": "undo that"
+   },
+   "status": 200,
+   "seconds": 0.9,
+   "response": {
+    "reply": "Proposed: Undo Kick volume change.",
+    "tool_trace": [
+     {
+      "tool": "fl_undo",
+      "args": {},
+      "result": {
+       "status": "proposed",
+       "proposal_id": "p_687bd4",
+       "summary": "Undo change c_6edbdc72 on Kick (volume back to 0.0 dB)",
+       "note": "Not applied yet: the user approves it in the SoundPilot panel."
+      }
+     }
+    ],
+    "proposals": [
+     {
+      "proposal_id": "p_687bd4",
+      "tool": "fl_undo",
+      "args": {},
+      "why": "You asked: \"undo that\"",
+      "status": "pending",
+      "preview": {
+       "track": null,
+       "changes": [
+        {
+         "field": "volume_db",
+         "before": -2.0,
+         "after": 0.0,
+         "unit": "dB"
+        }
+       ],
+       "summary": "Undo change c_6edbdc72 on Kick (volume back to 0.0 dB)"
+      }
+     }
+    ],
+    "needs_clarification": false
+   },
+   "note": ""
+  },
+  {
+   "request": "POST /api/proposals/p_687bd4/apply",
+   "body": null,
+   "status": 200,
+   "seconds": 0.0,
+   "response": {
+    "proposal_id": "p_687bd4",
+    "tool": "fl_undo",
+    "result": {
+     "change_id": "c_6edbdc72",
+     "track": {
+      "index": 1,
+      "name": "Kick"
+     },
+     "restored": {
+      "volume_db": 0.0,
+      "pan_pct": 0.0,
+      "stereo_width_pct": 0.0
+     },
+     "verified": true
+    }
+   },
+   "note": ""
+  }
+ ]
+}

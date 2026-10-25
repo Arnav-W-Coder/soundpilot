@@ -178,6 +178,8 @@ def validate_args(name: str, args: dict) -> dict:
             hint = f"allowed: {err.schema}" if isinstance(err.schema, dict) else f"limit {err.validator}={err.validator_value}"
         elif err.validator == "enum":
             hint = f"one of {err.validator_value}"
+        elif err.validator == "required":
+            hint = f"required arguments: {', '.join(schema.get('required', []))}; you gave: {', '.join(args) or 'none'}"
         raise ToolError("OUT_OF_RANGE", message, hint=hint)
     return apply_defaults(name, args)
 

@@ -124,28 +124,31 @@ DESCRIPTIONS: dict[str, str] = {
         "max_peak_dbfs and clip_count, the clipping track indices, and suggested volume_change_db trims."
     ),
     "analyze_audio": (
-        "Measure an exported WAV (absolute path): integrated/short-term loudness (LUFS), loudness range (LU), "
-        "true peak (dBTP), sample peak (dBFS), crest (dB), stereo correlation, spectral centroid (Hz) and 7 "
-        "band levels (dB). Optional reference_path (absolute) compares against a reference track. Returns an "
-        "analysis_id to pass to diagnose_complaint or verify_fix."
+        "Measure an exported WAV. Required: path (absolute path of the mix WAV). Optional: reference_path "
+        "(absolute path of a reference track to compare against). Returns integrated/short-term loudness (LUFS), "
+        "loudness range (LU), true peak (dBTP), sample peak (dBFS), crest (dB), stereo correlation, spectral "
+        "centroid (Hz), 7 band levels (dB) and an analysis_id to pass to diagnose_complaint or verify_fix."
     ),
     "diagnose_complaint": (
         "Turn a plain-language complaint about the mix (e.g. 'too bright', 'muddy', 'sounds bad') into measured "
-        "findings and proposed fl_set_track changes, using an analysis_id from analyze_audio. Optional track "
-        "(track index or name). Prefer this tool for vague complaints. If it returns needs_clarification=true, "
-        "ask the user its question and options and propose no changes."
+        "findings and proposed fl_set_track changes. Required: complaint (the user's words, e.g. 'too bright') "
+        "AND analysis_id (from analyze_audio). Optional: track (track index or name). Prefer this tool for vague "
+        "complaints. If it returns needs_clarification=true, ask the user its question and options and propose "
+        "no changes."
     ),
     "verify_fix": (
-        "Check whether a fix worked: compares a re-exported WAV (after_path, absolute) with the earlier analysis "
-        "(before_analysis_id) for the same complaint. Returns passed and per-check before/after values."
+        "Check whether a fix worked. Required: complaint (the original complaint, e.g. 'too bright'), "
+        "before_analysis_id (the analysis_id of the mix before the fix) AND after_path (absolute path of the "
+        "re-exported WAV). Returns passed and per-check before/after values."
     ),
     "analyze_midi": (
-        "Analyze an exported MIDI file (absolute path): detected key and confidence, out-of-key notes, timing "
-        "offsets from the grid (ms), velocity spread and flags such as 'robotic'. Optional track (MIDI track "
-        "number, integer)."
+        "Analyze an exported MIDI file. Required: path (absolute .mid path). Optional: track (MIDI track number, "
+        "integer). Returns the detected key and confidence, out-of-key notes, timing offsets from the grid (ms), "
+        "velocity spread and flags such as 'robotic'."
     ),
     "fix_midi": (
-        "Fix a MIDI file (needs user approval): fix is one of 'snap_to_scale' (move out-of-key notes into the "
+        "Fix a MIDI file (needs user approval). Required: path (absolute .mid path) and fix, one of "
+        "'snap_to_scale' (move out-of-key notes into the "
         "key), 'quantize' (snap timing to grid_beats: 0.125, 0.25, 0.5 or 1 beats) or 'humanize' (add small "
         "timing/velocity variation). Optional key like 'C major' or 'A minor', strength_pct 0..100. Writes a new "
         ".mid and a piano-roll script the user applies in FL."

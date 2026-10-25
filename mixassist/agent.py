@@ -351,6 +351,7 @@ class Agent:
         ambiguity: dict | None = None
         calls_made = 0
         final_text = ""
+        failed: dict[tuple[str, str], dict] = {}
 
         for _ in range(MAX_MODEL_TURNS):
             response = self.provider.chat([{"role": "system", "content": self.system_prompt}] + session.messages,
@@ -382,7 +383,16 @@ class Agent:
                     session.messages.append({"role": "tool", "name": call.name, "content": json.dumps(result)})
                     continue
                 calls_made += 1
-                model_view, result = self._run_call(call, session, turn, clarification)
+                key = (call.name, json.dumps(call.args, sort_keys=True, default=str))
+                if key in failed:
+                    prev = failed[key]["error"]
+                    result = error_dict(prev["code"], "you already made this exact call and it failed: " + prev["message"],
+                                        prev.get("candidates"), prev.get("hint") or "change the arguments")
+                    model_view = json.dumps(result)
+                else:
+                    model_view, result = self._run_call(call, session, turn, clarification)
+                    if is_error(result):
+                        failed[key] = result
                 if call.name == "diagnose_complaint" and not is_error(result) and result.get("needs_clarification"):
                     clarification = {"question": result.get("question"), "options": result.get("options") or []}
                 if is_error(result) and result["error"]["code"] == "AMBIGUOUS_TARGET":
