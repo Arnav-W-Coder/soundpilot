@@ -19,6 +19,7 @@ CONTROL_CHANGE = 0xB0
 ALL_NOTES_OFF = 123
 
 SPIN_S = 0.002            # sleep until 2 ms before the target, then spin
+SPIN_STALL_READS = 1000
 LIVE_LEAD_S = 0.05        # first live event this long after the transport read
 SYNC_POLLS = 6
 SYNC_POLL_SPACING_S = 0.02
@@ -44,12 +45,19 @@ class PlayNote:
 
 
 def precise_sleep_until(target: float, now: Callable[[], float], sleep: Callable[[float], None] = time.sleep) -> None:
+    last, stalled = None, 0
     while True:
-        remaining = target - now()
+        t = now()
+        remaining = target - t
         if remaining <= 0:
             return
         if remaining > SPIN_S:
             sleep(remaining - SPIN_S)
+            continue
+        stalled = stalled + 1 if t == last else 0
+        last = t
+        if stalled > SPIN_STALL_READS:  # a virtual clock only moves when slept
+            sleep(remaining)
 
 
 def _events(notes: list[PlayNote]) -> list[tuple[float, int, int, int]]:
@@ -95,8 +103,12 @@ def fit_transport_clock(fl, rate_ticks_per_s: float, polls: int = SYNC_POLLS,
         t1 = fl.now()
         offsets.append(float(reply["pos_ticks"]) - rate_ticks_per_s * (t0 + t1) / 2.0)
         if i < polls - 1:
-            precise_sleep_until(t1 + spacing_s, fl.now)
+            _wait_until(fl, t1 + spacing_s)
     return statistics.median(offsets)
+
+
+def _wait_until(fl, target: float) -> None:
+    precise_sleep_until(target, fl.now, getattr(fl, "sleep", time.sleep))
 
 
 class _Take:
@@ -111,7 +123,7 @@ class _Take:
     def run(self, timed_events: list[tuple[float, int, int, int]]) -> None:
         now = self.fl.now
         for target, order, pitch, vel in timed_events:
-            precise_sleep_until(target, now)
+            _wait_until(self.fl, target)
             if order == 1:
                 self.fl.note(NOTE_ON, pitch, vel)
                 self.lateness.append(now() - target)
@@ -175,7 +187,7 @@ def play(fl, notes: list[PlayNote], channel: int | None = None, record: bool = F
         if timed[0][0] < fl.now():
             warnings.append("Clock sync finished after the first note was due; the first notes may be late.")
         take.run(timed)
-        precise_sleep_until(fl.now() + TAIL_S, fl.now)
+        _wait_until(fl, fl.now() + TAIL_S)
     finally:
         take.release_all()
         if started:

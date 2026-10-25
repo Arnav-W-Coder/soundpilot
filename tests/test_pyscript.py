@@ -125,6 +125,12 @@ def test_default_dir_env_override(monkeypatch, tmp_path):
     assert pyscript.default_script_dir() == str(fl_dir)
 
 
+@pytest.mark.realfl
+@pytest.mark.skip(reason="PROBE P7: needs real FL (internal/probes.md)")
+def test_p7_menu_run_then_ctrl_alt_y_applies_rewritten_file():
+    """Run MCP Apply from the piano roll Scripting menu, rewrite the file, press Ctrl+Alt+Y: the new notes appear."""
+
+
 def test_falls_back_next_to_fixed_file(monkeypatch, tmp_path):
     monkeypatch.delenv(pyscript.PYSCRIPT_DIR_ENV)
     monkeypatch.setenv("HOME", str(tmp_path / "nohome"))
