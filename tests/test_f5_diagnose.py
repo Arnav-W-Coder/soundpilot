@@ -74,6 +74,29 @@ def test_pink_alone_sounds_bad_needs_clarification(audio_dir):
     assert out["proposed_changes"] == []
 
 
+def test_picking_a_measured_option_diagnoses_it(audio_dir):
+    analysis = aid(wav(audio_dir, "bright"))
+    first = diagnose("it sounds bad", analysis)
+    assert first["needs_clarification"] is True
+    highs = next(o for o in first["options"] if o.startswith("The highs ("))
+    for complaint in (highs, f"it sounds bad. {highs}"):
+        out = diagnose(complaint, analysis)
+        assert_contract(out)
+        assert out["needs_clarification"] is False
+        assert out["findings"][0]["descriptor"] == "bright"
+        [p] = out["proposed_changes"]
+        assert p["args"]["eq_band"] == "high" and p["args"]["eq_gain_db"] < 0
+
+
+def test_every_clarification_option_is_understood(audio_dir):
+    for name in ("pink", "bright", "muddy"):
+        analysis = aid(wav(audio_dir, name))
+        for option in diagnose("it sounds bad", analysis)["options"]:
+            out = diagnose(option, analysis)
+            assert_contract(out)
+            assert out.get("question") != "What sounds wrong? Pick the closest option.", option
+
+
 def test_muddy_sounds_boxy(audio_dir):
     out = diagnose("sounds boxy", aid(wav(audio_dir, "muddy")))
     assert_contract(out)

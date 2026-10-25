@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import math
+import re
 
 from mixassist.analysis import analyze, get_record
 from mixassist.analysis.analyze import Record
@@ -40,6 +41,18 @@ def _measure_all(names: list[str], record: Record, reference: Record | None) -> 
 def _option(m: Measurement) -> str:
     label = load_lexicon().descriptors[m.descriptor]["label"]
     return f"{label[0].upper()}{label[1:]} ({m.summary})"
+
+
+def _echoed_option(complaint: str) -> list[str]:
+    """Descriptors whose clarification option (see _option) the complaint repeats, e.g. "The highs (+5.4 dB ...)"."""
+    text = complaint.strip().lower()
+    head = re.sub(r"\s*\([^)]*\)\s*$", "", text)
+    out = []
+    for name, spec in load_lexicon().descriptors.items():
+        label = spec["label"].lower()
+        if head == label or re.search(r"(?<!\w)" + re.escape(label) + r"\s*\(", text):
+            out.append(name)
+    return out
 
 
 def _question(options: list[str]) -> str:
@@ -132,6 +145,8 @@ def diagnose(complaint: str, analysis_id: str, track=None) -> dict:
     reference = _reference_record(record)
     lex = load_lexicon()
     matched = lex.match(complaint)
+    if not matched.descriptors:
+        matched.descriptors = _echoed_option(complaint)
     notes = [MIDI_NOTE] if matched.midi else []
 
     if not matched.descriptors:
