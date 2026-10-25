@@ -25,7 +25,7 @@ export function describeStatus(status, offline) {
     name, fl, tag: fake ? "FAKEFL" : "FL BRIDGE",
     llm: (status.llm_provider || "llm") + " · " + model + unavailable,
     provider: status.llm_provider || "llm", model: model + unavailable,
-    flApi: status.fl_api, live: !!status.fl_connected,
+    message: status.model_message, live: !!status.fl_connected,
   };
 }
 
@@ -203,7 +203,7 @@ export default function App() {
         <div><span>TRACKS</span><strong>{mix ? String(tracks.length).padStart(2, "0") : "–"}</strong><small>{tracks.some(t => t.index === 0) ? "MIXER TRACKS INCL. MASTER" : "MIXER TRACKS"}</small></div>
         <div><span>TEMPO</span><strong>{mix?.bpm ? <>{Math.round(mix.bpm * 100) / 100} <em>BPM</em></> : "–"}</strong><small>FROM FL</small></div>
         <div><span>FL LINK</span><strong className="statSmall">{info.fl}</strong><small>{mix?.fl_api ? "FL API " + mix.fl_api : info.tag}</small></div>
-        <div><span>ASSISTANT</span><strong className="statSmall">{info.model}</strong><small>{info.provider.toUpperCase()}</small></div>
+        <div title={info.message}><span>ASSISTANT</span><strong className="statSmall">{info.model}</strong><small>{info.provider.toUpperCase()}</small></div>
       </div>
       <div hidden={tab !== "session"}>
         <SessionView tracks={tracks} mix={mix} mixError={mixError} mixAt={mixAt} offline={offline} info={info} selected={selected} onSelect={setSelected} onRefresh={refreshMix} onDiscuss={discussTrack}/>

@@ -6,10 +6,10 @@ import ErrorNote from "./ErrorNote.jsx";
 const TOOL_TITLES = { fl_set_track: "Mixer change", fix_midi: "MIDI fix", fl_play_midi: "Record MIDI into FL", fl_undo: "Undo a change" };
 const STATUS_TAGS = { pending: ["PENDING", "pending"], applying: ["APPLYING…", "pending"], applied: ["APPLIED", "ok"], failed: ["FAILED", "warn"], undone: ["UNDONE", "muted"], discarded: ["DISCARDED", "muted"] };
 
-function ChangeList({ preview, why }) {
+function ChangeList({ preview, why, band }) {
   const changes = preview?.changes || [];
   if (!changes.length) return preview?.summary && preview.summary !== why ? <small className="changeline">{preview.summary}</small> : null;
-  return <>{changes.map((c, i) => <small key={i} className="changeline">{fieldLabel(c.field)} {fieldValue(c.field, c.before, c.unit)} → {fieldValue(c.field, c.after, c.unit)}</small>)}</>;
+  return <>{changes.map((c, i) => <small key={i} className="changeline">{band && /^eq_/.test(c.field) ? band + " " : ""}{fieldLabel(c.field)} {fieldValue(c.field, c.before, c.unit)} → {fieldValue(c.field, c.after, c.unit)}</small>)}</>;
 }
 
 function Verified({ value }) {
@@ -76,7 +76,7 @@ export default function ProposalPanel({ proposals, onApply, onApplyAll, onDiscar
         <div>
           <strong>{p.preview?.track?.name || TOOL_TITLES[p.tool] || p.tool}</strong> <span className={"tag " + STATUS_TAGS[p.status][1]}>{STATUS_TAGS[p.status][0]}</span>
           {p.why && <p>{p.why}</p>}
-          <ChangeList preview={p.preview} why={p.why}/>
+          <ChangeList preview={p.preview} why={p.why} band={p.args?.eq_band}/>
           <div className="planactions"><button className="linkButton" disabled={busy} onClick={() => onApply(p)}>Apply ↗</button><button className="linkButton" disabled={busy} onClick={() => onDiscard(p)}>Discard</button></div>
         </div>
       </div>)}</div>
