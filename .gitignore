@@ -223,4 +223,7 @@ __marimo__/
 node_modules/
 web/dist/
 fixtures/audio/*.wav
+fixtures/midi/*_quantize.mid
+fixtures/midi/*_humanize.mid
+fixtures/midi/*_snap_to_scale.mid
 evals/out/
