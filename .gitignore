@@ -218,3 +218,9 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# SoundPilot
+node_modules/
+web/dist/
+fixtures/audio/*.wav
+evals/out/
