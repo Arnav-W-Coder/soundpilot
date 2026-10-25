@@ -373,6 +373,41 @@ def test_probe_notes_records_scale(loop, monkeypatch):
     assert len(sim.calls_named("transport.record")) == 2
 
 
+def test_core_tools_run_over_bridge_and_device_script(loop):
+    """F1/F2/F3 tool code end to end: FLClient -> BridgeTransport -> device script -> simulated FL."""
+    from mixassist.fl import get_fl, set_fl
+    from mixassist.tools import call_tool
+
+    fl, sim, t, _ = loop
+    sim.tracks[1]["plugins"] = {0: "Fruity Limiter"}
+    sim.tracks[2].update(name="Snare", vol=0.6, pan=-0.3)
+    previous = get_fl()
+    set_fl(fl)
+    try:
+        overview = call_tool("fl_get_mix_overview", {"include_empty": False})
+        assert "error" not in overview, overview
+        by_name = {tr["name"]: tr for tr in overview["tracks"]}
+        assert by_name["Kick"]["plugins"] == [{"slot": 0, "name": "Fruity Limiter"}]
+        assert by_name["Snare"]["pan_pct"] == -30.0
+        assert len(by_name["Kick"]["eq"]) == 3
+        assert "Current" not in by_name
+        assert overview["fl_api"] == 36 and overview["bpm"] == 120.0
+
+        r = call_tool("fl_set_track", {"track": "kick", "volume_change_db": -2})
+        assert "error" not in r, r
+        assert r["after"]["volume_db"] == pytest.approx(r["before"]["volume_db"] - 2, abs=0.25)
+        assert all(c[3] == 0 for c in sim.calls_named("mixer.setTrackVolume"))
+        assert sim.calls_named("general.saveUndo")
+
+        sim.tracks[3]["peak"] = 1.12
+        w = call_tool("fl_watch_peaks", {"seconds": 2, "start_playback": True})
+        assert "error" not in w, w
+        assert 3 in w["clipping"]
+        assert sim.playing is False
+    finally:
+        set_fl(previous)
+
+
 def test_cli_check_reports_missing_ports(monkeypatch, capsys):
     monkeypatch.setattr(bridge, "_load_rtmidi", lambda module=None: module or FakeRtMidi(inputs=[], outputs=[]))
     assert bridge.main(["--check"]) == 2
