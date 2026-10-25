@@ -191,7 +191,7 @@ export default function App() {
     <aside className="rail">
       <div className="identity"><RecordMark/><div className="identitytext"><strong>SOUNDPILOT</strong><span>THE CREATIVE CONTROL ROOM</span></div></div>
       <div className="railcaption">THE WORKSPACE</div>
-      <nav aria-label="Main navigation">{nav.map(([id, glyph, label]) => <button key={id} className={"railitem " + (tab === id ? "chosen" : "")} onClick={() => setTab(id)}><span className="navglyph">{glyph}</span>{label} {id === "assistant" && pending > 0 && <span className="railcount">{pending}</span>}</button>)}</nav>
+      <nav aria-label="Main navigation">{nav.map(([id, glyph, label]) => <button key={id} className={"railitem " + (tab === id ? "chosen" : "")} title={label} aria-label={label} aria-current={tab === id ? "page" : undefined} onClick={() => setTab(id)}><span className="navglyph">{glyph}</span>{label} {id === "assistant" && pending > 0 && <span className="railcount">{pending}</span>}</button>)}</nav>
       <div className="railend"><div className="vinyl"><div className="vinylcenter">SP</div></div><span className="railendtext">MAKE ROOM<br/>FOR THE MUSIC.</span><div className="localstate"><span className={"livepin " + (info.live ? "" : "off")}/> {info.tag}<span className="substate">{offline ? "Backend offline" : info.fl + (mix ? " · " + tracks.length + " tracks" : "")}</span></div></div>
     </aside>
     <div className="mainstage">
