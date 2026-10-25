@@ -39,10 +39,12 @@ The test session generates the audio fixtures (`fixtures/audio/*.wav`, git-ignor
 
 `SOUNDPILOT_LLM` picks the provider and `SOUNDPILOT_MODEL` the model ID. The server reads both from its own environment. Credentials stay server-side and never go into Vite env vars.
 
+**`.env`:** copy [`.env.example`](.env.example) to `.env` at the repo root and fill it in. `.env` is git-ignored. The API (`uvicorn mixassist.api:app`), `python -m mixassist` and the evals load it at startup. They only set variables that aren't already in the environment, so a shell `export` always wins.
+
 | `SOUNDPILOT_LLM` | Default `SOUNDPILOT_MODEL` | Needs |
 | --- | --- | --- |
 | `vertex` (default) | `gemma-4-26b-a4b-it-maas` | Google Cloud project with Vertex AI, ADC, location `global` |
-| `aistudio` | `gemma-4-26b-a4b-it` | `GEMINI_API_KEY` (implemented, not verified on this machine) |
+| `aistudio` | `gemma-4-26b-a4b-it` (also listed: `gemma-4-31b-it`) | `GEMINI_API_KEY` from [AI Studio](https://aistudio.google.com/apikey) |
 | `ollama` | `gemma4:31b-cloud` | Ollama signed in to its cloud (`ollama signin`); runs on Ollama's servers, no local download |
 
 At startup the API checks the configured model and reports the result in `GET /api/status` (`model_available`, `model_message`). Vertex doesn't list Gemma MaaS models, so the check falls back to a 1-token probe. If the model is missing, the message suggests the IDs above.
@@ -61,9 +63,13 @@ Vertex often answers `429 RESOURCE_EXHAUSTED` for this model. The provider retri
 
 ### AI Studio
 
+Put `GEMINI_API_KEY=...` in `.env`, then pick the provider:
+
 ```bash
-export SOUNDPILOT_LLM=aistudio GEMINI_API_KEY=...   # model gemma-4-26b-a4b-it
+export SOUNDPILOT_LLM=aistudio      # model gemma-4-26b-a4b-it; or SOUNDPILOT_MODEL=gemma-4-31b-it
 ```
+
+AI Studio keys may start with `AQ.`. The provider passes `GEMINI_API_KEY` to the client explicitly, so an unrelated `GOOGLE_API_KEY` in the shell is ignored. The free tier answers `429` under load, and the same backoff as Vertex handles it.
 
 ### Ollama cloud (fallback)
 
@@ -164,6 +170,7 @@ The agent loop lives in `mixassist/agent.py`. Read tools run automatically. Thes
 ```bash
 .venv/bin/python -m evals.gemma_suite --llm vertex                  # 20 prompts, temperature 0, FakeFL
 .venv/bin/python -m evals.gemma_suite --llm ollama                  # gemma4:31b-cloud
+.venv/bin/python -m evals.gemma_suite --llm aistudio                # gemma-4-26b-a4b-it, GEMINI_API_KEY from .env
 .venv/bin/python -m evals.run_demo tracer --llm vertex              # end-to-end through the HTTP API
 .venv/bin/python -m evals.run_demo bright --llm ollama
 ```

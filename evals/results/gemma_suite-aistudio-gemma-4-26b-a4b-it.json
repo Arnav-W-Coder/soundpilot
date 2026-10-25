@@ -1,0 +1,442 @@
+{
+ "provider": "aistudio",
+ "model": "gemma-4-26b-a4b-it",
+ "temperature": 0.0,
+ "date": "2026-10-25T22:18:27.250602+00:00",
+ "score": 16,
+ "total": 20,
+ "invented_tools": [],
+ "writes_after_clarification": 0,
+ "text_fallbacks": 0,
+ "passed": true,
+ "rows": [
+  {
+   "id": 1,
+   "prompt": "What's on my mixer?",
+   "expected": "fl_get_mix_overview",
+   "passed": true,
+   "detail": "{\"include_empty\": true}",
+   "calls": [
+    {
+     "tool": "fl_get_mix_overview",
+     "args": {
+      "include_empty": true
+     }
+    }
+   ],
+   "reply": "Your mixer has 18 tracks at 120.0 bpm, including Master, Kick, Snare, Clap, Hat Open, Hat Closed, Bass, Sub, Lead Synth, Pad, Vocal, FX, and Reverb Bus. There are also several empty Insert tracks.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 6.0
+  },
+  {
+   "id": 2,
+   "prompt": "Turn the kick down 2 dB",
+   "expected": "fl_set_track",
+   "passed": true,
+   "detail": "{\"volume_change_db\": -2, \"track\": \"kick\"}",
+   "calls": [
+    {
+     "tool": "fl_set_track",
+     "args": {
+      "volume_change_db": -2,
+      "track": "kick"
+     }
+    }
+   ],
+   "reply": "I've proposed lowering the kick volume by 2 dB. Please approve it in the SoundPilot panel.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 7.6
+  },
+  {
+   "id": 3,
+   "prompt": "Pan the snare 30% to the left",
+   "expected": "fl_set_track",
+   "passed": true,
+   "detail": "{\"pan_pct\": -30, \"track\": \"snare\"}",
+   "calls": [
+    {
+     "tool": "fl_set_track",
+     "args": {
+      "pan_pct": -30,
+      "track": "snare"
+     }
+    }
+   ],
+   "reply": "I have proposed panning the snare to -30%. Please approve this change in the SoundPilot panel.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 36.6
+  },
+  {
+   "id": 4,
+   "prompt": "Set the bass fader to exactly -6 dB",
+   "expected": "fl_set_track",
+   "passed": true,
+   "detail": "{\"track\": \"bass\", \"volume_db\": -6}",
+   "calls": [
+    {
+     "tool": "fl_set_track",
+     "args": {
+      "track": "bass",
+      "volume_db": -6
+     }
+    }
+   ],
+   "reply": "I've proposed setting the bass volume from -3.0 dB to -6.0 dB. Please approve this change in the SoundPilot panel.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 6.4
+  },
+  {
+   "id": 5,
+   "prompt": "Cut 3 dB of low end on the Bass with the built-in EQ at 120 Hz",
+   "expected": "fl_set_track",
+   "passed": true,
+   "detail": "{\"track\": \"Bass\", \"eq_freq_hz\": 120, \"eq_gain_db\": -3, \"eq_band\": \"low\"}",
+   "calls": [
+    {
+     "tool": "fl_set_track",
+     "args": {
+      "track": "Bass",
+      "eq_freq_hz": 120,
+      "eq_gain_db": -3,
+      "eq_band": "low"
+     }
+    }
+   ],
+   "reply": "I have proposed cutting the low end on the Bass track by 3 dB at 120 Hz. Please approve the change in the SoundPilot panel.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 7.9
+  },
+  {
+   "id": 6,
+   "prompt": "Undo that last change",
+   "expected": "fl_undo",
+   "passed": false,
+   "detail": "LLMError: aistudio gemma-4-26b-a4b-it: 429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_input_token_count, limit: 16000, model: gemma-4-26b, description: Generate content input tokens per minute limit exceeded on Free Tier. See https://ai.google.dev/gemini-api/docs/rate-limits.\nPlease retry in 42.289928486s.",
+   "calls": [],
+   "reply": "",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 35.4
+  },
+  {
+   "id": 7,
+   "prompt": "Is anything clipping? Listen for 10 seconds.",
+   "expected": "fl_watch_peaks",
+   "passed": true,
+   "detail": "{\"seconds\": 10}",
+   "calls": [
+    {
+     "tool": "fl_watch_peaks",
+     "args": {
+      "seconds": 10
+     }
+    }
+   ],
+   "reply": "Yes, the Lead Synth (track 8) clipped 4 times with a peak of 0.98 dBFS. I suggest trimming it by -7 dB.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 7.8
+  },
+  {
+   "id": 8,
+   "prompt": "Analyze my mix at /Users/dylanvatanapradit/Downloads/soundpilot/fixtures/audio/pink.wav",
+   "expected": "analyze_audio",
+   "passed": true,
+   "detail": "{\"path\": \"/Users/dylanvatanapradit/Downloads/soundpilot/fixtures/audio/pink.wav\"}",
+   "calls": [
+    {
+     "tool": "analyze_audio",
+     "args": {
+      "path": "/Users/dylanvatanapradit/Downloads/soundpilot/fixtures/audio/pink.wav"
+     }
+    }
+   ],
+   "reply": "The mix has an integrated loudness of -16.3 LUFS and a true peak of -6.37 dBTP. The spectral centroid is 2893.2 Hz with a crest factor of 13.61 dB.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 7.8
+  },
+  {
+   "id": 9,
+   "prompt": "How loud is /Users/dylanvatanapradit/Downloads/soundpilot/fixtures/audio/bright.wav compared with my reference /Users/dylanvatanapradit/Downloads/soundpilot/fixtures/audio/pink.wav?",
+   "expected": "analyze_audio",
+   "passed": true,
+   "detail": "{\"path\": \"/Users/dylanvatanapradit/Downloads/soundpilot/fixtures/audio/bright.wav\", \"reference_path\": \"/Users/dylanvatanapradit/Downloads/soundpilot/fixtures/audio/pink.wav\"}",
+   "calls": [
+    {
+     "tool": "analyze_audio",
+     "args": {
+      "path": "/Users/dylanvatanapradit/Downloads/soundpilot/fixtures/audio/bright.wav",
+      "reference_path": "/Users/dylanvatanapradit/Downloads/soundpilot/fixtures/audio/pink.wav"
+     }
+    }
+   ],
+   "reply": "The integrated loudness is -16.3 LUFS, which is 0 LUFS different from your reference. The band differences show the 10k-20k range is 3.17 dB louder than the reference.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 6.2
+  },
+  {
+   "id": 10,
+   "prompt": "My mix /Users/dylanvatanapradit/Downloads/soundpilot/fixtures/audio/bright.wav is too bright compared to my reference /Users/dylanvatanapradit/Downloads/soundpilot/fixtures/audio/pink.wav.",
+   "expected": "diagnose_complaint",
+   "passed": false,
+   "detail": "LLMError: aistudio gemma-4-26b-a4b-it: 429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_input_token_count, limit: 16000, model: gemma-4-26b, description: Generate content input tokens per minute limit exceeded on Free Tier. See https://ai.google.dev/gemini-api/docs/rate-limits.\nPlease retry in 48.39778883s.",
+   "calls": [],
+   "reply": "",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 32.2
+  },
+  {
+   "id": 11,
+   "prompt": "The export at /Users/dylanvatanapradit/Downloads/soundpilot/fixtures/audio/muddy.wav sounds boxy.",
+   "expected": "diagnose_complaint",
+   "passed": true,
+   "detail": "{\"complaint\": \"boxy\", \"analysis_id\": \"7b02e86f0e2e\"}",
+   "calls": [
+    {
+     "tool": "analyze_audio",
+     "args": {
+      "path": "/Users/dylanvatanapradit/Downloads/soundpilot/fixtures/audio/muddy.wav"
+     }
+    },
+    {
+     "tool": "diagnose_complaint",
+     "args": {
+      "complaint": "boxy",
+      "analysis_id": "7b02e86f0e2e"
+     }
+    }
+   ],
+   "reply": "The analysis shows a +3.8 dB buildup in the 150\u2013500 Hz range. I propose cutting the master track's mid EQ by 3.8 dB at 300 Hz to reduce the boxiness.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 24.0
+  },
+  {
+   "id": 12,
+   "prompt": "My mix at /Users/dylanvatanapradit/Downloads/soundpilot/fixtures/audio/pink.wav sounds bad. Fix it.",
+   "expected": "clarify",
+   "passed": true,
+   "detail": "asked: What sounds wrong? Pick the closest option.",
+   "calls": [
+    {
+     "tool": "analyze_audio",
+     "args": {
+      "path": "/Users/dylanvatanapradit/Downloads/soundpilot/fixtures/audio/pink.wav"
+     }
+    },
+    {
+     "tool": "diagnose_complaint",
+     "args": {
+      "complaint": "sounds bad",
+      "analysis_id": "ecf105ddfe69"
+     }
+    }
+   ],
+   "reply": "What sounds wrong? Pick the closest option:\n- Phase (5th-percentile correlation -0.08)\n- Too bright or harsh\n- Muddy or boxy\n- Too much bass (boomy)",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": true,
+   "seconds": 11.2
+  },
+  {
+   "id": 13,
+   "prompt": "Ugh, the whole thing just sounds off. Make it better.",
+   "expected": "no_write",
+   "passed": false,
+   "detail": "LLMError: aistudio gemma-4-26b-a4b-it: 429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_input_token_count, limit: 16000, model: gemma-4-26b, description: Generate content input tokens per minute limit exceeded on Free Tier. See https://ai.google.dev/gemini-api/docs/rate-limits.\nPlease retry in 41.200031467s.",
+   "calls": [],
+   "reply": "",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 31.9
+  },
+  {
+   "id": 14,
+   "prompt": "I exported /Users/dylanvatanapradit/Downloads/soundpilot/fixtures/audio/bright.wav, then fixed the brightness and re-exported to /Users/dylanvatanapradit/Downloads/soundpilot/fixtures/audio/bright_fixed.wav. Did the fix work?",
+   "expected": "verify_fix",
+   "passed": true,
+   "detail": "{\"after_path\": \"/Users/dylanvatanapradit/Downloads/soundpilot/fixtures/audio/bright_fixed.wav\", \"complaint\": \"bright\", \"before_analysis_id\": \"76ec8fbf58b9\"}",
+   "calls": [
+    {
+     "tool": "analyze_audio",
+     "args": {
+      "path": "/Users/dylanvatanapradit/Downloads/soundpilot/fixtures/audio/bright.wav"
+     }
+    },
+    {
+     "tool": "verify_fix",
+     "args": {
+      "after_path": "/Users/dylanvatanapradit/Downloads/soundpilot/fixtures/audio/bright_fixed.wav",
+      "complaint": "bright",
+      "before_analysis_id": "76ec8fbf58b9"
+     }
+    }
+   ],
+   "reply": "The fix worked. The brightness (5\u201320 kHz level) dropped by 3.36 dB, and the integrated loudness remained stable at -16.3 LUFS.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 21.4
+  },
+  {
+   "id": 15,
+   "prompt": "Does the melody in /Users/dylanvatanapradit/Downloads/soundpilot/fixtures/midi/melody_c_major_3wrong.mid have any wrong notes?",
+   "expected": "analyze_midi",
+   "passed": true,
+   "detail": "{\"path\": \"/Users/dylanvatanapradit/Downloads/soundpilot/fixtures/midi/melody_c_major_3wrong.mid\"}",
+   "calls": [
+    {
+     "tool": "analyze_midi",
+     "args": {
+      "path": "/Users/dylanvatanapradit/Downloads/soundpilot/fixtures/midi/melody_c_major_3wrong.mid"
+     }
+    }
+   ],
+   "reply": "Yes, there are 3 out-of-key notes at beats 5, 13.5, and 20.5. Would you like me to fix them?",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 6.6
+  },
+  {
+   "id": 16,
+   "prompt": "Fix the out-of-key notes in /Users/dylanvatanapradit/Downloads/soundpilot/fixtures/midi/melody_c_major_3wrong.mid",
+   "expected": "fix_midi",
+   "passed": true,
+   "detail": "{\"key\": \"C major\", \"path\": \"/Users/dylanvatanapradit/Downloads/soundpilot/fixtures/midi/melody_c_major_3wrong.mid\", \"fix\": \"snap_to_scale\"}",
+   "calls": [
+    {
+     "tool": "fix_midi",
+     "args": {
+      "key": "C major",
+      "path": "/Users/dylanvatanapradit/Downloads/soundpilot/fixtures/midi/melody_c_major_3wrong.mid",
+      "fix": "snap_to_scale"
+     }
+    }
+   ],
+   "reply": "I have proposed a fix to snap the out-of-key notes in `melody_c_major_3wrong.mid` to the C major scale. Please approve the proposal in the SoundPilot panel to apply the changes.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 38.7
+  },
+  {
+   "id": 17,
+   "prompt": "Quantize /Users/dylanvatanapradit/Downloads/soundpilot/fixtures/midi/sloppy.mid to 16th notes",
+   "expected": "fix_midi",
+   "passed": true,
+   "detail": "{\"fix\": \"quantize\", \"grid_beats\": 0.25, \"path\": \"/Users/dylanvatanapradit/Downloads/soundpilot/fixtures/midi/sloppy.mid\"}",
+   "calls": [
+    {
+     "tool": "fix_midi",
+     "args": {
+      "fix": "quantize",
+      "grid_beats": 0.25,
+      "path": "/Users/dylanvatanapradit/Downloads/soundpilot/fixtures/midi/sloppy.mid"
+     }
+    }
+   ],
+   "reply": "I have proposed a quantization of `/Users/dylanvatanapradit/Downloads/soundpilot/fixtures/midi/sloppy.mid` to 0.25 beats (16th notes). Please approve the change in the SoundPilot panel.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 6.5
+  },
+  {
+   "id": 18,
+   "prompt": "/Users/dylanvatanapradit/Downloads/soundpilot/fixtures/midi/robotic.mid sounds robotic and stiff, make it feel more human",
+   "expected": "fix_midi",
+   "passed": true,
+   "detail": "{\"fix\": \"humanize\", \"path\": \"/Users/dylanvatanapradit/Downloads/soundpilot/fixtures/midi/robotic.mid\"}",
+   "calls": [
+    {
+     "tool": "fix_midi",
+     "args": {
+      "fix": "humanize",
+      "path": "/Users/dylanvatanapradit/Downloads/soundpilot/fixtures/midi/robotic.mid"
+     }
+    }
+   ],
+   "reply": "I've proposed a humanize fix for `robotic.mid` to add timing and velocity variation. Please approve the proposal in the SoundPilot panel to apply it.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 9.3
+  },
+  {
+   "id": 19,
+   "prompt": "Play /Users/dylanvatanapradit/Downloads/soundpilot/fixtures/midi/scale_8.mid on my selected synth so I can hear it",
+   "expected": "fl_play_midi",
+   "passed": false,
+   "detail": "LLMError: aistudio gemma-4-26b-a4b-it: 429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_input_token_count, limit: 16000, model: gemma-4-26b, description: Generate content input tokens per minute limit exceeded on Free Tier. See https://ai.google.dev/gemini-api/docs/rate-limits.\nPlease retry in 41.697856334s.",
+   "calls": [],
+   "reply": "",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 36.9
+  },
+  {
+   "id": 20,
+   "prompt": "Record /Users/dylanvatanapradit/Downloads/soundpilot/fixtures/midi/scale_8.mid into the piano roll starting at bar 5",
+   "expected": "fl_play_midi",
+   "passed": true,
+   "detail": "{\"record\": true, \"path\": \"/Users/dylanvatanapradit/Downloads/soundpilot/fixtures/midi/scale_8.mid\", \"start_bar\": 5}",
+   "calls": [
+    {
+     "tool": "fl_play_midi",
+     "args": {
+      "record": true,
+      "path": "/Users/dylanvatanapradit/Downloads/soundpilot/fixtures/midi/scale_8.mid",
+      "start_bar": 5
+     }
+    }
+   ],
+   "reply": "I have proposed recording `scale_8.mid` into the piano roll starting at bar 5. Please approve this in the SoundPilot panel.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 8.9
+  }
+ ]
+}

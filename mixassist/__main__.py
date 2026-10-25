@@ -17,6 +17,9 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--port", type=int, default=8000)
     args = parser.parse_args(argv)
 
+    from mixassist.envfile import load_env
+
+    load_env()
     # stdout carries MCP JSON-RPC, so logs go to stderr.
     logging.basicConfig(stream=sys.stderr, level=os.environ.get("SOUNDPILOT_LOG", "INFO"),
                         format="%(asctime)s %(levelname)s %(name)s: %(message)s")

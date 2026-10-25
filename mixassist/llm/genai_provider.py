@@ -165,7 +165,7 @@ class GenAIProvider(LLMProvider):
 
 def _unavailable(kind: str, model: str, exc) -> str:
     return (f"{kind}: model {model!r} is not available ({exc}). Documented IDs: gemma-4-26b-a4b-it-maas on Vertex "
-            "(location global), gemma-4-26b-a4b-it on AI Studio, gemma4:31b-cloud on Ollama.")
+            "(location global), gemma-4-26b-a4b-it or gemma-4-31b-it on AI Studio, gemma4:31b-cloud on Ollama.")
 
 
 def _transient(exc: Exception) -> bool:

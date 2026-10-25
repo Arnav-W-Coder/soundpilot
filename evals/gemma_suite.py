@@ -182,7 +182,10 @@ def main() -> int:
     parser.add_argument("--only", type=int, nargs="*", help="run only these case ids")
     args = parser.parse_args()
 
+    from mixassist.envfile import load_env
     from mixassist.llm import make_provider
+
+    load_env()
 
     if not (AUDIO / "bright.wav").exists():
         import subprocess

@@ -11,11 +11,13 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from mixassist import agent as agent_mod
+from mixassist.envfile import load_env
 from mixassist.errors import ToolError, is_error
 from mixassist.fl import get_fl
 from mixassist.llm import LLMError, provider_config
 from mixassist.tools import call_tool
 
+load_env()
 log = logging.getLogger("mixassist.api")
 
 _llm_state: dict = {"provider": None, "model": None, "available": None, "message": "not checked yet"}

@@ -154,14 +154,16 @@ def _markdown(run: Run) -> str:
 
 
 def main() -> int:
+    from mixassist.envfile import load_env
+    from mixassist.llm import DEFAULT_MODELS
+
+    load_env()
     parser = argparse.ArgumentParser()
     parser.add_argument("demo", choices=["tracer", "bright"])
     parser.add_argument("--llm", default=os.environ.get("SOUNDPILOT_LLM", "vertex"))
     parser.add_argument("--model", default=None)
     parser.add_argument("--suffix", default="")
     args = parser.parse_args()
-
-    from mixassist.llm import DEFAULT_MODELS
 
     model = args.model or DEFAULT_MODELS[args.llm]
     port = _free_port()

@@ -17,7 +17,7 @@ Gemma 4 through the `google-genai` Python SDK. One client supports these provide
 - `aistudio`: `genai.Client(api_key=$GEMINI_API_KEY)`.
 - `ollama`: Ollama `/api/chat` with native tools at `http://127.0.0.1:11434` (override with `OLLAMA_HOST`). Dev/fallback provider.
 
-The model ID always comes from `SOUNDPILOT_MODEL`. At startup, list or probe the available models and log whether the configured ID exists. If it doesn't, fail with a clear message suggesting the documented IDs: `gemma-4-26b-a4b-it-maas` on Vertex (location `global`) and `gemma-4-26b-a4b-it` on AI Studio, and `gemma4:31b-cloud` on Ollama.
+The model ID always comes from `SOUNDPILOT_MODEL`. At startup, list or probe the available models and log whether the configured ID exists. If it doesn't, fail with a clear message suggesting the documented IDs: `gemma-4-26b-a4b-it-maas` on Vertex (location `global`), `gemma-4-26b-a4b-it` (or `gemma-4-31b-it`) on AI Studio, and `gemma4:31b-cloud` on Ollama.
 
 Credentials stay server-side only. Never put them in Vite env vars.
 
@@ -26,7 +26,7 @@ Credentials stay server-side only. Never put them in Vite env vars.
 - Vertex: project `YOUR_PROJECT_ID` (from `gcloud config`), ADC present. `gemma-4-26b-a4b-it-maas` works **only at location `global`**. `gemma-4-e4b-it`, `gemma-4-e4b-it-maas`, `gemma-4-31b-it-maas` return 404 on Vertex. `client.models.list()` on Vertex does NOT list Gemma MaaS models, so the startup check must fall back to a tiny probe call (e.g. `count_tokens` or a 1-token generate) when the list doesn't contain the ID.
 - Vertex returns frequent `429 RESOURCE_EXHAUSTED` for this model. The provider MUST retry 429/503 with exponential backoff (e.g. 1, 2, 4, 8, 16 s; ~6 attempts) before failing.
 - Native function calling works on Vertex Gemma (`types.FunctionDeclaration(parameters_json_schema=...)`, `automatic_function_calling` disabled). In a quick test the model called `fl_set_track` with `{"track":"kick","volume":"-2"}`: it invented an argument name and used a string number. Schema descriptions must be explicit, numeric strings must be coerced, and schema-validation errors must be returned to the model as tool results so it can retry.
-- AI Studio: the `GOOGLE_API_KEY` in the environment belongs to a project where the Gemini API is disabled (403). Treat AI Studio as unverified. The `AQ.` key is a Vertex express key bound to `us-central1`, so it can't reach the global-only Gemma model.
+- AI Studio: the `GOOGLE_API_KEY` in the shell environment belongs to a project where the Gemini API is disabled (403); don't use it. The user's AI Studio key lives in the git-ignored `.env` as `GEMINI_API_KEY` (also `AQ.`-prefixed, but a Gemini API key, not a Vertex express key: Vertex express calls with it return 403 SERVICE_DISABLED). With it, `client.models.list()` lists `gemma-4-26b-a4b-it` and `gemma-4-31b-it`, native function calling works, and Gemma 4 returns thought parts before the answer. The free tier answers `429` under load; the same backoff handles it.
 - Ollama is installed with the cloud model `gemma4:31b-cloud`. Don't use or download a local Ollama model (it costs RAM).
 - **User directive: if Vertex doesn't work, use Ollama with Gemma 4 31B (`gemma4:31b-cloud`).** The Ollama provider must be fully functional, and evals/demos fall back to it if Vertex keeps failing.
 

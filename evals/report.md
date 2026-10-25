@@ -8,11 +8,12 @@ Date: Oct 25, 2026. Machine: macOS (this repo's dev Mac). FL backend for every r
 | --- | --- |
 | Gemma tool-call suite, Vertex `gemma-4-26b-a4b-it-maas` (location `global`) | **18/20**, 0 invented tools, 0 writes after clarification: **PASS** |
 | Gemma tool-call suite, Ollama cloud `gemma4:31b-cloud` | **20/20**, 0 invented tools, 0 writes after clarification: **PASS** |
+| Gemma tool-call suite, AI Studio `gemma-4-26b-a4b-it` (free tier) | **16/20**, 0 invented tools, 0 writes after clarification: **PASS**. All 4 misses were free-tier `429` quota errors, not wrong calls. The 4 passed on a re-run. |
 | MCP Inspector CLI (`tools/list`, `tools/call`) | 10 tools listed; valid call returns readback; invalid call returns the §3.1 error with `isError: true` |
 | Scripted MCP client over stdio (`tests/test_mcp_server.py`) | 23 passed: 10 tools, schemas validate, one valid and one invalid call per tool |
-| Tracer demo ("turn the kick down 2 dB" → proposal → apply → readback → undo) | PASS on Vertex and on Ollama cloud |
-| "My mix is too bright" demo (analyze → diagnose → apply high shelf → verify) | PASS on Vertex and on Ollama cloud |
-| `pytest` (all workers) | 486 passed, 8 skipped (the skips are real-FL PROBE tests) |
+| Tracer demo ("turn the kick down 2 dB" → proposal → apply → readback → undo) | PASS on Vertex, Ollama cloud and AI Studio |
+| "My mix is too bright" demo (analyze → diagnose → apply high shelf → verify) | PASS on Vertex, Ollama cloud and AI Studio |
+| `pytest` (all workers) | 492 passed, 8 skipped (the skips are real-FL PROBE tests) |
 | Real-FL probes P1–P8, §8.3, §8.4 | **not run** (see below) |
 
 ## Gemma tool-call suite (spec §8.2, adapted)
@@ -50,8 +51,11 @@ The feasibility doc's prompt list (§4 item 7) wasn't available, so the 20 promp
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `gemma-4-26b-a4b-it-maas` | Vertex AI, project `YOUR_PROJECT_ID`, location `global` | 18/20 | 0 | 0 | 0 | 29 s | [json](results/gemma_suite-vertex-gemma-4-26b-a4b-it-maas.json) |
 | `gemma4:31b-cloud` | Ollama (cloud model, `ollama signin`) | 20/20 | 0 | 0 | 0 | 29 s | [json](results/gemma_suite-ollama-gemma4_31b-cloud.json) |
+| `gemma-4-26b-a4b-it` | AI Studio (`GEMINI_API_KEY` from `.env`, free tier) | 16/20 | 0 | 0 | 0 | 349 s | [json](results/gemma_suite-aistudio-gemma-4-26b-a4b-it.json) |
 
 Vertex misses: prompts 16 and 18. In both, Gemma called `analyze_midi` first, then asked "Would you like me to snap them to the scale?" instead of proposing `fix_midi`. That isn't unsafe, but it doesn't meet the predicate.
+
+AI Studio misses: prompts 6, 10, 13 and 19. None was a model error. Each ended in `429 RESOURCE_EXHAUSTED` because the backoff (1, 2, 4, 8, 16 s, about 31 s in total) ran out before the free-tier quota window reset. The quota is `generate_content_free_tier_input_token_count`, 16,000 input tokens per minute for `gemma-4-26b`. Each agent call sends the instructions plus the 10 tool schemas, and the server asked for a ~42 s wait. After a 65 s pause, `--only 6 10 13 19` passed all 4: `fl_undo`, `diagnose_complaint` "too bright" with the analysis_id, no write for the vague prompt, and `fl_play_midi` live. The suite's 429s add most of the 349 s runtime. On AI Studio, Gemma passed prompts 16 and 18 (`fix_midi` snap_to_scale and humanize), which Vertex missed. The listed model `gemma-4-31b-it` wasn't evaluated. A paid tier, or a backoff that honors the server's retry delay, would avoid the misses.
 
 Earlier run, before tool descriptions were tightened: Vertex scored 16/20 and Ollama cloud 19/20. On Vertex, Gemma sent `volume_change_db` for an EQ cut (prompt 5), omitted `grid_beats` for "16th notes" (17), and omitted `start_bar` for "bar 5" (20). Ollama returned one empty response (prompt 4) that didn't reproduce. Fixes between the two runs:
 
@@ -65,10 +69,12 @@ The prompts and predicates didn't change between runs. Vertex returned frequent 
 
 Harness: [`evals/run_demo.py`](run_demo.py). It starts `uvicorn mixassist.api:app` on a free port with FakeFL and calls the same `/api/*` endpoints the UI uses. Transcripts (full JSON plus readable markdown) are in [`evals/demos/`](demos/).
 
-| Demo | Vertex `gemma-4-26b-a4b-it-maas` | Ollama `gemma4:31b-cloud` |
-| --- | --- | --- |
-| Tracer: "turn the kick down 2 dB" → `fl_set_track` proposal (`Kick: volume 0.0 dB -> -2.0 dB`) → FL unchanged before approval → apply → readback −2.0 dB, verified → "undo that" → `fl_undo` proposal → apply → 0.0 dB | PASS ([md](demos/tracer-vertex.md)) | PASS ([md](demos/tracer-ollama.md)) |
-| Bright: "my mix is too bright" with bright.wav and pink.wav → `analyze_audio` → `diagnose_complaint` (top finding bright, +5.4 dB at 5–20 kHz) → proposal `Master: high EQ gain 0.0 dB -> -5.4 dB` at 8000 Hz → apply (verified) → "did the fix work?" with bright_fixed.wav → `verify_fix` passed | PASS ([md](demos/bright-vertex.md)) | PASS ([md](demos/bright-ollama.md)) |
+| Demo | Vertex `gemma-4-26b-a4b-it-maas` | Ollama `gemma4:31b-cloud` | AI Studio `gemma-4-26b-a4b-it` |
+| --- | --- | --- | --- |
+| Tracer: "turn the kick down 2 dB" → `fl_set_track` proposal (`Kick: volume 0.0 dB -> -2.0 dB`) → FL unchanged before approval → apply → readback −2.0 dB, verified → "undo that" → `fl_undo` proposal → apply → 0.0 dB | PASS ([md](demos/tracer-vertex.md)) | PASS ([md](demos/tracer-ollama.md)) | PASS ([md](demos/tracer-aistudio.md)) |
+| Bright: "my mix is too bright" with bright.wav and pink.wav → `analyze_audio` → `diagnose_complaint` (top finding bright, +5.4 dB at 5–20 kHz) → proposal `Master: high EQ gain 0.0 dB -> -5.4 dB` at 8000 Hz → apply (verified) → "did the fix work?" with bright_fixed.wav → `verify_fix` passed | PASS ([md](demos/bright-vertex.md)) | PASS ([md](demos/bright-ollama.md)) | PASS ([md](demos/bright-aistudio.md)) |
+
+On AI Studio, the tracer took 11 s and bright 50 s. Bright hit five 429s in a row, and the last retry got through. Neither demo needed a fallback step.
 
 During development, Vertex Gemma once dropped a required argument (`complaint`) and repeated the same failing `verify_fix` call until it hit the 6-call cap. The agent now answers an identical repeat of a failed call with a pointed error instead of re-running it, and the descriptions name the required args. The committed transcripts are from runs after those fixes, with no fallback steps.
 
@@ -113,5 +119,6 @@ Source: [internal/probes.md](../internal/probes.md). None of these has been run.
 .venv/bin/pytest -q
 .venv/bin/python -m evals.gemma_suite --llm vertex
 .venv/bin/python -m evals.gemma_suite --llm ollama            # gemma4:31b-cloud
-.venv/bin/python -m evals.run_demo tracer --llm vertex        # or --llm ollama; also: bright
+.venv/bin/python -m evals.gemma_suite --llm aistudio          # GEMINI_API_KEY from the git-ignored .env
+.venv/bin/python -m evals.run_demo tracer --llm vertex        # or --llm ollama / aistudio; also: bright
 ```
