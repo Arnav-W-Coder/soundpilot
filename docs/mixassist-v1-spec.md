@@ -14,7 +14,7 @@ Tag	Source
 [E41] [E42]	EBU Tech 3341 (2023) Table 1 and Tech 3342 Table 1: https://tech.ebu.ch/docs/tech/tech3341.pdf, https://tech.ebu.ch/docs/tech/tech3342.pdf, signals at http://tech.ebu.ch/loudness
 [U1]–[U5]	User wording: [U1] reddit.com/r/FL_Studio/comments/hiar0q ("thin and brittle… hi-hats and cymbals… harsh"). [U2] …/1k62szv ("muddy", "boxy build-up" 200–500 Hz). [U3] …/y5rt9m ("sounds very out of key", "notes are clashing"). [U4] …/ew24z5 ("sound so robotic and unnatural"). [U5] forum.image-line.com/viewtopic.php?t=49716 ("sounds drowning out one another")
 1. Architecture and workstreams
-ollmcp (HIL on) -> gemma4:12b (Ollama) -> MCP stdio -> mixassist server (Python 3.11+)
+ollmcp (HIL on) -> gemma4:31b-cloud (Ollama cloud) -> MCP stdio -> mixassist server (Python 3.11+)
   analysis/ (numpy, scipy, soundfile, pyloudnorm), midi/ (mido), complaints/ (lexicon + rules)
   fl/bridge.py (python-rtmidi) <-SysEx + notes-> loopMIDI "MA to FL" / "MA from FL" <-> FL device_MixAssist.py
   fl/fake.py implements the same op table in memory (§3.4) and is used by every test
@@ -259,10 +259,10 @@ The official EBU signal files should be used where available (download from [E41
 MCP Inspector: npx @modelcontextprotocol/inspector python -m mixassist --fake.
 All 10 tools list, each schema validates, and each tool is called once with valid and once with invalid arguments.
 Invalid calls must return the §3.1 error, not a crash.
-Gemma tool-call suite: evals/gemma_suite.py sends 20 prompts to Ollama /api/chat with the 10 tool schemas at temperature 0, model gemma4:12b, against FakeFL.
+Gemma tool-call suite: evals/gemma_suite.py sends 20 prompts to Ollama /api/chat with the 10 tool schemas at temperature 0, model gemma4:31b-cloud (Ollama cloud; no local model), against FakeFL.
 Prompts are those in the feasibility doc §4, item 7, with tool names mapped to §3.2.
 Pass: ≥ 16/20 correct tool with arguments satisfying their predicates, 0 invented tool names, and 0 write calls after a needs_clarification=true result.
-Also record gemma4:e4b and gemma4:26b for comparison.
+Also record the Vertex model gemma-4-26b-a4b-it-maas for comparison. Local Ollama models are not used.
 Real-FL read-back: on the target build, F1 and F2 values match FL's mixer hints for 3 tracks, and F8 recorded onsets meet the ±20 ms p95 criterion.
 Loudness cross-check: 3 real exported mixes measured in Youlean Loudness Meter 2 (free) or FL's Wave Candy loudness view agree within ±0.3 LU integrated and ±0.3 dB true peak.
 Blind listening test (≥ 5 producers, 15 minutes):

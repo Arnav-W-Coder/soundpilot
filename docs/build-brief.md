@@ -27,7 +27,7 @@ Credentials stay server-side only. Never put them in Vite env vars.
 - Vertex returns frequent `429 RESOURCE_EXHAUSTED` for this model. The provider MUST retry 429/503 with exponential backoff (e.g. 1, 2, 4, 8, 16 s; ~6 attempts) before failing.
 - Native function calling works on Vertex Gemma (`types.FunctionDeclaration(parameters_json_schema=...)`, `automatic_function_calling` disabled). In a quick test the model called `fl_set_track` with `{"track":"kick","volume":"-2"}`: it invented an argument name and used a string number. Schema descriptions must be explicit, numeric strings must be coerced, and schema-validation errors must be returned to the model as tool results so it can retry.
 - AI Studio: the `GOOGLE_API_KEY` in the environment belongs to a project where the Gemini API is disabled (403). Treat AI Studio as unverified. The `AQ.` key is a Vertex express key bound to `us-central1`, so it can't reach the global-only Gemma model.
-- Ollama is installed with `gemma4:31b-cloud` and `gemma4:12b-it-qat`.
+- Ollama is installed with the cloud model `gemma4:31b-cloud`. Don't use or download a local Ollama model (it costs RAM).
 - **User directive: if Vertex doesn't work, use Ollama with Gemma 4 31B (`gemma4:31b-cloud`).** The Ollama provider must be fully functional, and evals/demos fall back to it if Vertex keeps failing.
 
 Defaults: `SOUNDPILOT_LLM=vertex`, `SOUNDPILOT_MODEL=gemma-4-26b-a4b-it-maas`, `GOOGLE_CLOUD_LOCATION=global`, `GOOGLE_CLOUD_PROJECT` from env, else from `gcloud config get-value project`.
@@ -122,7 +122,7 @@ Proposal shape:
 5. F7 (analysis, fixers, pyscript generator, fake `flpianoroll` test).
 6. F8 scheduler on FakeFL.
 7. `device_MixAssist.py`, `bridge.py`, `internal/probes.md`.
-8. Evals: `evals/gemma_suite.py` calls the provider abstraction (temperature 0). Keep §8.2 pass criteria (≥16/20, 0 invented tools, 0 writes after a clarification). Record results for each model ID that is available (Vertex `gemma-4-26b-a4b-it-maas`, Ollama `gemma4:31b-cloud`, optionally `gemma4:12b-it-qat`). Check MCP Inspector-equivalent: `npx @modelcontextprotocol/inspector --cli python -m mixassist --fake --method tools/list` (and a tools/call), or an equivalent scripted MCP client test.
+8. Evals: `evals/gemma_suite.py` calls the provider abstraction (temperature 0). Keep §8.2 pass criteria (≥16/20, 0 invented tools, 0 writes after a clarification). Record results for each model ID that is available (Vertex `gemma-4-26b-a4b-it-maas`, Ollama cloud `gemma4:31b-cloud`; no local Ollama models). Check MCP Inspector-equivalent: `npx @modelcontextprotocol/inspector --cli python -m mixassist --fake --method tools/list` (and a tools/call), or an equivalent scripted MCP client test.
 
 Cut order if time runs out: spec §9. The UI analysis panel can be cut before F6. F6 is never cut.
 
