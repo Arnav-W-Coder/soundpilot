@@ -104,6 +104,11 @@
 .tracetool{font-weight:800;color:#f5d6b7;margin-right:7px}
 .traceargs{font-size:10px;color:#b49377;word-break:break-all}
 .traceitem p{margin:4px 0 0;font-size:11px;color:#ddc7b2}
+.websources{margin:6px 0 0;padding-left:14px;list-style:square;color:#b49377}
+.websources li{margin:3px 0;font-size:11px;overflow-wrap:anywhere}
+.webhost{font-size:10px;color:#8f7562;margin-left:4px}
+a.weblink{color:#f1b273;text-decoration:underline;text-decoration-color:#f1b27366;text-underline-offset:2px}
+a.weblink:hover{color:#ffd2a1;text-decoration-color:#ffd2a1}
 .rawtoggle>summary{cursor:pointer;font-size:9px;letter-spacing:1px;color:#957760;margin-top:4px}
 .rawjson{max-height:220px;overflow:auto;background:#19130f;border:1px solid #5d412e;padding:9px;font-size:10px;line-height:1.45;color:#d9bea6;white-space:pre-wrap;word-break:break-all}
 .pendingnote{display:block;margin-top:10px;color:#f1b87e;font-size:11px}

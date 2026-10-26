@@ -3,6 +3,7 @@ import { api, isError } from "./api.js";
 import { fixed } from "./format.js";
 import RecordMark from "./RecordMark.jsx";
 import ErrorNote from "./ErrorNote.jsx";
+import { Linkified, WebSources } from "./Linkify.jsx";
 
 function summarize(tool, res) {
   if (!res || typeof res !== "object") return res === undefined ? "" : String(res);
@@ -16,6 +17,8 @@ function summarize(tool, res) {
     case "verify_fix": return `${res.passed ? "passed" : "did not pass"} · ${res.checks?.length || 0} checks`;
     case "analyze_midi": return `${res.key ? res.key.tonic + " " + res.key.mode : "?"} · ${res.note_count} notes · ${res.flags?.length || 0} flags`;
     case "fl_play_midi": return `${res.mode} · ${res.notes_sent} notes sent`;
+    case "web_search": return `searched the web for “${res.query}” · ${res.results?.length || 0} sources`;
+    case "web_fetch": return `read ${res.text?.length ?? 0} characters${res.truncated ? " (truncated)" : ""}`;
     default: {
       const s = JSON.stringify(res);
       return s.length > 110 ? s.slice(0, 110) + "…" : s;
@@ -31,10 +34,11 @@ function repeatsQuestion(text, question) {
 function ToolTrace({ trace }) {
   if (!trace?.length) return null;
   return <details className="trace">
-    <summary>What I measured · {trace.length} tool call{trace.length === 1 ? "" : "s"}</summary>
+    <summary>What I measured{trace.some(t => t.tool?.startsWith("web_")) ? " & looked up" : ""} · {trace.length} tool call{trace.length === 1 ? "" : "s"}</summary>
     <ol>{trace.map((t, i) => <li key={i} className={t.result?.error ? "traceitem failed" : "traceitem"}>
       <div><span className="tracetool">{t.tool}</span><code className="traceargs">{JSON.stringify(t.args ?? {})}</code></div>
       <p>{summarize(t.tool, t.result)}</p>
+      <WebSources tool={t.tool} result={t.result}/>
       <details className="rawtoggle"><summary>raw result</summary><pre className="rawjson">{JSON.stringify(t.result, null, 2)}</pre></details>
     </li>)}</ol>
   </details>;
@@ -95,7 +99,7 @@ export default function AssistantView({ sessionId, run, tracks, info, offline, d
           ? <div key={i} className="aiBubble"><div className="speaker"><RecordMark/> <span>SOUNDPILOT</span></div><ErrorNote error={m.error} onCandidate={c => setDraft(c)}/></div>
           : <div key={i} className="aiBubble">
             <div className="speaker"><RecordMark/> <span>SOUNDPILOT</span></div>
-            {m.text && <p className="replytext">{m.text}</p>}
+            {m.text && <p className="replytext"><Linkified text={m.text}/></p>}
             {m.clarify && <>
               {m.clarify.question && !repeatsQuestion(m.text, m.clarify.question) && <p className="replytext"><b>{m.clarify.question}</b></p>}
               {m.clarify.options.length > 0 && <div className="chipRow">{m.clarify.options.map(o => <button key={o} className="chip" disabled={i !== lastIndex || busy} onClick={() => send(o)}>{o}</button>)}</div>}
