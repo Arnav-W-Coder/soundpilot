@@ -96,6 +96,8 @@
 .aiBubble p.replynote{color:#f1b87e;font-size:12px}
 .typing span{animation:blink 1.2s infinite both}.typing span:nth-child(2){animation-delay:.2s}.typing span:nth-child(3){animation-delay:.4s}
 @keyframes blink{0%,80%,100%{opacity:.2}40%{opacity:1}}
+.typing.waiting{color:#ff9f68}
+.typing .elapsed{margin-left:10px;font-size:10px;letter-spacing:1px;color:#b49377}
 .trace{margin-top:14px;border-top:1px solid #6b473188;padding-top:10px;font-size:11px;color:#c9ab94}
 .trace>summary{cursor:pointer;color:#edb47b;font-size:10px;font-weight:800;letter-spacing:1.3px;text-transform:uppercase}
 .trace ol{margin:10px 0 0;padding-left:18px}

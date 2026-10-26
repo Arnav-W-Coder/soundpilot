@@ -1,20 +1,23 @@
 """SoundPilot HTTP API (build brief, HTTP API). Run: uvicorn mixassist.api:app --port 8000"""
 from __future__ import annotations
 
+import json
 import logging
+import queue
 import threading
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
 from mixassist import agent as agent_mod
+from mixassist import progress
 from mixassist.envfile import load_env
 from mixassist.errors import ToolError, is_error
 from mixassist.fl import get_fl
-from mixassist.llm import LLMError, provider_config
+from mixassist.llm import LLMError, fallback_config, provider_config
 from mixassist.logctx import configure as configure_logging
 from mixassist.logctx import log_context
 from mixassist.tools import call_tool
@@ -134,6 +137,10 @@ def status() -> dict:
         "model_available": _llm_state["available"],
         "model_message": _llm_state["message"],
     }
+    try:
+        out["llm_fallback"] = fallback_config()
+    except LLMError:
+        out["llm_fallback"] = []
     if connected:
         try:
             out["fl_api"] = int(fl.request("hello").get("api") or 0)
@@ -154,6 +161,39 @@ def chat(body: ChatBody):
     except LLMError as exc:
         log.error("chat failed: %s", exc)
         return JSONResponse(status_code=502, content={"error": {"code": "LLM_ERROR", "message": str(exc)}})
+
+
+def _sse(event: str, data: dict) -> str:
+    return f"event: {event}\ndata: {json.dumps(data, default=str)}\n\n"
+
+
+@app.post("/api/chat/stream")
+def chat_stream(body: ChatBody):
+    """Server-sent events for one chat turn: ``step`` events while it runs ({type, text, ...}: llm, tool, retry,
+    fallback, fastpath), then ``result`` (the /api/chat payload) or ``error`` ({error:{code,message}})."""
+    events: queue.Queue = queue.Queue()
+
+    def work() -> None:
+        try:
+            with progress.listen(lambda e: events.put(("step", e))):
+                events.put(("result", agent_mod.get_agent().chat(body.session_id, body.message)))
+        except LLMError as exc:
+            log.error("chat failed: %s", exc)
+            events.put(("error", {"error": {"code": "LLM_ERROR", "message": str(exc)}}))
+        except Exception as exc:  # noqa: BLE001 - the stream must end with an event, not a dropped connection
+            log.exception("chat stream failed")
+            events.put(("error", {"error": {"code": "SERVER_ERROR", "message": f"{type(exc).__name__}: {exc}"}}))
+        finally:
+            events.put(None)
+
+    threading.Thread(target=work, name="chat-stream", daemon=True).start()
+
+    def stream():
+        while (item := events.get()) is not None:
+            yield _sse(*item)
+
+    return StreamingResponse(stream(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
 @app.get("/api/proposals")

@@ -56,13 +56,29 @@ function suggestionsFor(tracks) {
   ].filter(Boolean);
 }
 
+function Working({ step, since }) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 500);
+    return () => clearInterval(id);
+  }, []);
+  const seconds = Math.max(0, Math.floor((now - since) / 1000));
+  const waiting = step?.type === "retry" || step?.type === "fallback";
+  return <p className={waiting ? "typing waiting" : "typing"}>
+    {step?.text || "Measuring and thinking"}<span>.</span><span>.</span><span>.</span>
+    {seconds > 0 && <small className="elapsed">{seconds} s</small>}
+  </p>;
+}
+
 export default function AssistantView({ sessionId, run, tracks, info, offline, draft, setDraft, onProposals, pending }) {
   const [messages, setMessages] = useState([]);
   const [busy, setBusy] = useState(false);
+  const [step, setStep] = useState(null);
+  const [since, setSince] = useState(0);
   const inputRef = useRef(null);
   const endRef = useRef(null);
 
-  useEffect(() => { endRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }); }, [messages, busy]);
+  useEffect(() => { endRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }); }, [messages, busy, step]);
   useEffect(() => { if (draft) inputRef.current?.focus(); }, [draft]);
 
   async function send(text) {
@@ -71,8 +87,11 @@ export default function AssistantView({ sessionId, run, tracks, info, offline, d
     setMessages(m => [...m, { role: "user", text }]);
     setDraft("");
     setBusy(true);
-    const r = await run(() => api.chat(sessionId, text));
+    setStep(null);
+    setSince(Date.now());
+    const r = await run(() => api.chatStream(sessionId, text, setStep));
     setBusy(false);
+    setStep(null);
     if (isError(r)) {
       setMessages(m => [...m, { role: "error", error: r.error }]);
       return;
@@ -107,7 +126,7 @@ export default function AssistantView({ sessionId, run, tracks, info, offline, d
             {m.proposals > 0 && <p className="replynote">I've drafted {m.proposals} {m.proposals === 1 ? "change" : "changes"}. Review {m.proposals === 1 ? "it" : "them"} in the listening notes panel — nothing is applied until you approve.</p>}
             <ToolTrace trace={m.trace}/>
           </div>)}
-      {busy && <div className="aiBubble"><div className="speaker"><RecordMark/> <span>SOUNDPILOT</span></div><p className="typing">Measuring and thinking<span>.</span><span>.</span><span>.</span></p></div>}
+      {busy && <div className="aiBubble"><div className="speaker"><RecordMark/> <span>SOUNDPILOT</span></div><Working step={step} since={since}/></div>}
       <div ref={endRef}/>
     </div>
     <div className="promptfooter">
