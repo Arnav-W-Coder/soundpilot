@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import time
 import types
@@ -68,7 +69,14 @@ def _usage(raw) -> dict:
 class TimedProvider(LLMProvider):
     def __init__(self, inner: LLMProvider):
         self.inner = inner
-        self.name, self.model = inner.name, inner.model
+
+    @property
+    def name(self):
+        return self.inner.name
+
+    @property
+    def model(self):
+        return self.inner.model
 
     def __getattr__(self, item):
         return getattr(self.inner, item)
@@ -227,7 +235,8 @@ def fl_costs(rt_ms: float) -> list[dict]:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--llm", default="vertex", choices=["vertex", "aistudio", "ollama"])
+    parser.add_argument("--llm", default="vertex", choices=["vertex", "aistudio", "ollama", "env"],
+                        help="env: the provider the backend builds (SOUNDPILOT_LLM + SOUNDPILOT_LLM_FALLBACK chain)")
     parser.add_argument("--model", default=None)
     parser.add_argument("--label", default="run")
     parser.add_argument("--only", nargs="*", help="turn keys to run")
@@ -250,15 +259,17 @@ def main() -> int:
         subprocess.run([sys.executable, "-m", "fixtures.make", "--out", str(ROOT / "fixtures")], cwd=ROOT, check=True)
     from mixassist.llm import make_provider
 
-    provider = make_provider(args.llm, args.model)
+    provider = make_provider() if args.llm == "env" else make_provider(args.llm, args.model)
+    kind = os.environ.get("SOUNDPILOT_LLM", "vertex") if args.llm == "env" else provider.name
     prompts = [p for p in PROMPTS if not args.only or p[0] in args.only]
     t0 = time.monotonic()
     rows = run_turns(provider, prompts, args.pause)
     total = time.monotonic() - t0
-    result = {"provider": provider.name, "model": provider.model, "label": args.label,
+    result = {"provider": kind, "model": provider.model, "label": args.label,
+              "fallback": os.environ.get("SOUNDPILOT_LLM_FALLBACK") if args.llm == "env" else None,
               "date": datetime.now(timezone.utc).isoformat(), "total_s": round(total, 1), "rows": rows}
     RESULTS.mkdir(parents=True, exist_ok=True)
-    out = RESULTS / f"latency-{provider.name}-{args.label}.json"
+    out = RESULTS / f"latency-{kind}-{args.label}.json"
     if not args.only:
         out.write_text(json.dumps(result, indent=1, default=str))
     print(f"\n{provider.name} {provider.model} [{args.label}]: total {total:.1f} s, "

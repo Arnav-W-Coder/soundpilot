@@ -9,6 +9,8 @@ Date: Oct 25, 2026. Machine: macOS (this repo's dev Mac). FL backend for every r
 | Gemma tool-call suite, Vertex `gemma-4-26b-a4b-it-maas` (location `global`) | **18/20**, 0 invented tools, 0 writes after clarification: **PASS** |
 | Gemma tool-call suite, Ollama cloud `gemma4:31b-cloud` | **20/20**, 0 invented tools, 0 writes after clarification: **PASS** |
 | Gemma tool-call suite, AI Studio `gemma-4-26b-a4b-it` (free tier) | **16/20**, 0 invented tools, 0 writes after clarification: **PASS**. All 4 misses were free-tier `429` quota errors, not wrong calls. The 4 passed on a re-run. |
+| Chat latency, six-turn benchmark on FakeFL ([Latency](#latency)) | Vertex 15.3 → 10.7 s, Ollama 15.2 → 7.7 s, AI Studio 102 s (one turn failed) → 77 s (no failures), or 10.9 s with fallback to Ollama |
+| Theory/mix suite (`evals/theory_suite.py`, 10 prompts, 3 runs each) with the music theory reference in the prompt | Vertex mean 6.3 → **8.0/10**, Ollama cloud 6.3 → **7.7/10**; main suite unchanged or better (Vertex 18 → 19/20, Ollama 20/20) |
 | MCP Inspector CLI (`tools/list`, `tools/call`) | 10 tools listed; valid call returns readback; invalid call returns the §3.1 error with `isError: true` |
 | Scripted MCP client over stdio (`tests/test_mcp_server.py`) | 23 passed: 10 tools, schemas validate, one valid and one invalid call per tool |
 | Tracer demo ("turn the kick down 2 dB" → proposal → apply → readback → undo) | PASS on Vertex, Ollama cloud and AI Studio |
@@ -107,6 +109,38 @@ Google Search grounding (`types.Tool(google_search=types.GoogleSearch())`), prob
 
 So grounding is not used. The agent's own `web_search` works the same on all three providers, shows up in the trace and goes through the URL and untrusted-content guards.
 
+## Music theory and mixing reference in the system prompt
+
+`mixassist/agent.py` now appends [`mixassist/knowledge/music_theory.md`](../mixassist/knowledge/music_theory.md) and [`mixing.md`](../mixassist/knowledge/mixing.md) (package data) to the system prompt, plus two rules: compute `fl_play_midi` notes from the reference with the first note at `start_beat` 0, live unless the user says record, and check every pitch and the note and repeat counts before calling; follow the mixing reference for track-specific mix requests. The reference covers MIDI numbers (C4 = 60, which FL's piano roll labels C5), scale, mode and chord formulas, diatonic chords, common progressions, inversions, arpeggio patterns, beat values, melody rules, ranges and velocities, plus instrument and problem frequency bands, level and loudness targets, panning, small relative moves, and the built-in EQ's limits. `tests/test_knowledge.py` re-derives every formula and pitch number in it from first principles.
+
+Prompt cost: +3,688 characters (922 tokens at chars/4). Gemma's tokenizer splits digits one by one, so the real cost is higher: **+1,583 tokens** (Ollama `gemma4:31b-cloud` `prompt_eval_count`: 382 tokens for the old system prompt, 1,965 for the new one). The `fl_play_midi` and `fl_set_track` description hints add 301 characters to the tool declarations.
+
+Harness: [`evals/theory_suite.py`](theory_suite.py), 10 prompts with deterministic checks. Seven are music prompts, checked on the `fl_play_midi` notes: pitch classes, order, repetitions, chord spans, span in beats, varied velocities, record flag and `start_bar`, first note at beat 0. Three are mix prompts: no proposal widens or pans kick, bass or sub, moves more than 6 dB (4 dB for the vocal prompt) or sets an absolute level for a relative request, and the prompt with a WAV must go through `analyze_audio` → `diagnose_complaint`. Before = HEAD `e7bc950` plus only the suite; after = the same plus this change. Each ran 3 times per model, because temperature 0 still varies between runs.
+
+| Model | Before (3 runs) | After (3 runs) |
+| --- | --- | --- |
+| Vertex `gemma-4-26b-a4b-it-maas` | 6, 7, 6 (mean 6.3/10) | 7, 8, 9 (mean **8.0/10**) |
+| Ollama `gemma4:31b-cloud` | 6, 7, 6 (mean 6.3/10) | 8, 8, 7 (mean **7.7/10**) |
+
+Passes per prompt, out of 3 runs, before → after (Vertex; Ollama):
+
+| # | Prompt | Vertex | Ollama |
+| --- | --- | --- | --- |
+| 1 | Play an E major arpeggio 3 times | 3 → 3 | 0 → 3 (before: G instead of G#) |
+| 2 | Play a C major scale | 3 → 3 | 3 → 3 |
+| 3 | Play a D dorian scale | 3 → 3 | 1 → 2 (before: Bb; after, 1 run had a stray D#) |
+| 4 | Write a 4-bar melody in A minor and play it | 1 → 1 (before: used record=true; after: 17–20 beats long) | 3 → 3 |
+| 5 | Play a ii-V-I in C | 0 → 2 | 0 → 0 (builds ii as F A C F, without the D) |
+| 6 | Play a G major chord in first inversion | 0 → 0 | 0 → 0 (root position, or the wrong chord) |
+| 7 | Record a C major arpeggio into the piano roll starting at bar 3 | 0 → 3 (before: played live) | 3 → 3 |
+| 8 | The bass and kick are fighting (no file) | 3 → 3 | 3 → 3 |
+| 9 | muddy.wav: the bass and kick are fighting | 3 → 3 | 3 → 3 |
+| 10 | The vocals are getting buried, make them sit better | 3 → 3 | 3 → 3 |
+
+The mix prompts passed before and after. After the change, Ollama's answers to 8 and 10 are carving moves from the reference: Bass mid band −3 dB at 80 Hz, and Lead Synth mid −2 dB at 3 kHz plus Vocal +1.5 dB, all three runs. Vertex asks for the exported WAV. Remaining misses: neither model applies "first inversion", even with a worked inversion example, and Ollama keeps dropping the root of the ii chord. One Vertex run put all ii-V-I notes at beat 0. In an earlier run, before the rule said that `start_bar` alone places a recording, Vertex offset a bar-3 recording to `start_beat` 8, which would have landed at bar 5. The judge now requires the first note at beat 0.
+
+Regression check, main suite, same before/after worktrees: Vertex **18/20 → 19/20**, Ollama **20/20 → 20/20**, 0 invented tools and 0 writes after clarification in all four runs. Vertex's remaining miss is prompt 5 (an EQ frequency without a gain). Results: `results/theory_suite-*-{before,after}-r{1,2,3}.json` and `results/gemma_suite-*-theory-{before,after}.json`. AI Studio wasn't run, to stay inside its 16k-tokens/min free tier.
+
 ## MCP checks (spec §8.1)
 
 MCP Inspector CLI (`@modelcontextprotocol/inspector`, run via `npx -y`):
@@ -121,6 +155,50 @@ This lists all 10 tools with their verbatim §3.2 input schemas; the output is s
 - `--tool-arg volume_db=9` returned `isError: true` and the text `{"error": {"code": "OUT_OF_RANGE", "message": "fl_set_track: volume_db: 9 is greater than the maximum of 5", ...}}`. The server didn't crash.
 
 The scripted MCP client is `tests/test_mcp_server.py`, using the official `mcp` SDK. It spawns `python -m mixassist --fake` over stdio, lists the tools, checks every schema with `Draft202012Validator.check_schema`, and calls each tool once with valid and once with invalid arguments, plus an unknown tool. Every invalid call returns a §3.1 error with `isError: true`. 23 passed.
+
+## Latency
+
+Harness: [`evals/latency_bench.py`](latency_bench.py). It runs six turns, each in a fresh session on a fresh FakeFL: "turn the kick down 2 dB", "what's on my mixer?", "pan the hats 30% left", "analyze bright.wav against pink.wav, it's too bright", "play an E major arpeggio", "is anything clipping?". For each turn it records:
+
+- wall time;
+- each LLM call, with its time and tokens (input, output and thinking);
+- time spent sleeping between retries;
+- tool time;
+- SysEx round trips to FL.
+
+FakeFL runs on a virtual clock, so playback and peak watching take no real time. "Before" is commit `27b9c25`; "after" is `2d557fa`. Same day, temperature 0. Raw results: `results/latency-<provider>-<label>.json`.
+
+Wall time per turn in seconds, with LLM calls in parentheses:
+
+| Provider | Run | kick down | overview | pan hats | bright | arpeggio | clipping | Total | LLM calls | Input tokens | Retry wait |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Vertex `gemma-4-26b-a4b-it-maas` | before | 2.2 (2) | 2.1 (2) | 1.7 (2) | 4.2 (3) | 3.8 (2) | 1.3 (2) | 15.3 s | 13 | 28,971 | 0 s |
+| | after | 1.1 (1) | 1.5 (2) | 1.6 (2) | 3.5 (2) | 2.4 (1) | 0.6 (1) | **10.7 s** | 9 | 18,091 | 0 s |
+| | after, `SOUNDPILOT_FASTPATH=1` | 0.0 (0) | 2.1 (2) | 1.3 (2) | 3.3 (2) | 1.6 (1) | 0.5 (1) | 8.8 s | 8 | | 0 s |
+| Ollama `gemma4:31b-cloud` | before | 1.0 (2) | 1.0 (2) | 1.3 (3) | 5.4 (3) | 3.5 (2) | 3.0 (2) | 15.2 s | 14 | 44,687 | 0 s |
+| | after | 0.5 (1) | 2.2 (2) | 1.4 (3) | 2.5 (2) | 0.7 (1) | 0.4 (1) | **7.7 s** | 10 | 29,521 | 0 s |
+| AI Studio `gemma-4-26b-a4b-it` (free tier) | before | 4.5 (2) | 4.3 (2) | 10.4 (3) | 31.7, **failed** (429) | 44.9 (2) | 6.3 (2) | 102.1 s | 12 | 36,999 | 62 s |
+| | after | 1.5 (1) | 2.6 (2) | 64.1 (3) | 4.9 (2) | 2.9 (1) | 0.9 (1) | 76.9 s, no failures | 10 | 31,519 | 60.5 s |
+| | after, `SOUNDPILOT_LLM_FALLBACK=ollama` | 1.3 (1) | 2.7 (2) | 2.8 (3) | 2.5 (2) | 1.0 (1) | 0.5 (1) | **10.9 s** | 10 | | 0 s |
+
+What the numbers showed:
+
+- **LLM calls are the cost.** Tool time was under 0.1 s per turn, except the 1.4 s audio analysis. Every turn made 2–3 calls, and the last one only restated what the tools had already returned. That summary call is now skipped when the turn ends in proposals, a clarification question, a peak report or a live playback. The reply is built from the tool results ("Proposed for your approval: Kick: volume 0.0 dB -> -2.0 dB."). Questions, errors and multi-part requests still go back to the model. Result: 13 → 9 calls on Vertex and 14 → 10 on Ollama.
+- **Rate limits are the long tail.** On AI Studio the old 1, 2, 4, 8, 16 s backoff gave up after 31 s, while the server's RetryInfo asked for 42–59 s. That turn failed, and the next turn waited another 31 s. Retries now wait for the server's delay, so the "after" run had no failures but one 59 s wait. The fallback chain gives up on the primary after 4 s of waiting, switches to Ollama for 120 s, and finished the same six turns in 10.9 s. The Vertex 429s seen in daily use carry no retry hint, so they still back off 1, 2, 4… s. With a fallback set, they switch after 1 + 2 s.
+- **Thinking.** On AI Studio, Gemma 4 thought for 92–466 tokens per turn (1,129 in total). It now sends `thinking_level=MINIMAL`, which brought that to 0 (`thinking_budget` and `LOW` return 400 for Gemma). Vertex MaaS reports no thinking tokens, and Ollama gets `think: false`.
+- **Input tokens fell 15–38%.** The mix overview sent to the model now drops flat EQ bands, false mute/solo flags and plugin slot numbers. One overview went from 4,613 to 2,035 characters. The UI still gets the full result. Output is capped at 2,048 tokens per call.
+- **FL round trips.** A proposal preview used to read the whole mixer, including empty tracks: 274 SysEx round trips, about 1.7 s at 5 ms each on the real bridge. It now reads only the target track, which takes 16 round trips (0.1 s). For comparison: `fl_get_mix_overview` takes 159, applying "Kick −2 dB" takes 20, and a 10 s peak watch makes about 2,400 polls in FL time. Run `latency_bench --fl-only --rt-ms 5` to reproduce these counts.
+- "pan the hats" still makes 2–3 calls. There is no "Hats" track (the fixture has "Hi-Hat"), so the agent reads the mixer and asks which track was meant. That is the intended behavior.
+
+Accuracy after the changes. The Gemma suite runs used the same 20 prompts; the theory suite came from the other worker's in-progress `evals/theory_suite.py`:
+
+- Gemma suite, Vertex: **19/20**, 0 invented tools, 0 writes after clarification (PASS). It missed prompt 5: `volume_change_db` instead of `eq_gain_db`. That reproduced with thinking on and off.
+- Gemma suite, Ollama cloud: **20/20**, 0 invented tools, 0 writes after clarification (PASS).
+- Theory suite: 8/10 on Ollama and 9/10 on Vertex. That's the same as or better than the other worker's own run without these changes (8/10 on both).
+
+Raw results: [Vertex](results/gemma_suite-vertex-gemma-4-26b-a4b-it-maas-latency.json), [Ollama](results/gemma_suite-ollama-gemma4_31b-cloud-latency.json).
+
+The UI now calls `POST /api/chat/stream`. It shows what the assistant is doing ("Asking Gemma (vertex)", "Reading the mixer", "vertex rate limit…; retrying in 7 s") with an elapsed-seconds counter, instead of a bare "thinking".
 
 ## Real-FL probe checklist status
 
@@ -150,4 +228,5 @@ Source: [internal/probes.md](../internal/probes.md). None of these has been run.
 .venv/bin/python -m evals.gemma_suite --llm ollama            # gemma4:31b-cloud
 .venv/bin/python -m evals.gemma_suite --llm aistudio          # GEMINI_API_KEY from the git-ignored .env
 .venv/bin/python -m evals.run_demo tracer --llm vertex        # or --llm ollama / aistudio; also: bright
+.venv/bin/python -m evals.theory_suite --llm vertex --tag after-r1   # or --llm ollama --model gemma4:31b-cloud
 ```

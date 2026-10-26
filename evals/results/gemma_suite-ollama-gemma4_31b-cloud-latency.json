@@ -1,0 +1,470 @@
+{
+ "provider": "ollama",
+ "model": "gemma4:31b-cloud",
+ "temperature": 0.0,
+ "date": "2026-10-26T00:45:03.538091+00:00",
+ "score": 20,
+ "total": 20,
+ "invented_tools": [],
+ "writes_after_clarification": 0,
+ "text_fallbacks": 0,
+ "passed": true,
+ "rows": [
+  {
+   "id": 1,
+   "prompt": "What's on my mixer?",
+   "expected": "fl_get_mix_overview",
+   "passed": true,
+   "detail": "{\"include_empty\": false}",
+   "calls": [
+    {
+     "tool": "fl_get_mix_overview",
+     "args": {
+      "include_empty": false
+     }
+    }
+   ],
+   "reply": "Your mixer is set to 120.0 bpm. You have 13 active tracks, including a Master with a Fruity Limiter and a Reverb Bus at -9.0 dB. Key tracks include Kick (0.0 dB), Bass (-3.0 dB with a +2.0 dB boost at 80.0 Hz), and Vocal (-1.5 dB).",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 8.1
+  },
+  {
+   "id": 2,
+   "prompt": "Turn the kick down 2 dB",
+   "expected": "fl_set_track",
+   "passed": true,
+   "detail": "{\"track\": \"Kick\", \"volume_change_db\": -2}",
+   "calls": [
+    {
+     "tool": "fl_set_track",
+     "args": {
+      "track": "Kick",
+      "volume_change_db": -2
+     }
+    }
+   ],
+   "reply": "Proposed for your approval: Kick: volume 0.0 dB -> -2.0 dB.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 0.4
+  },
+  {
+   "id": 3,
+   "prompt": "Pan the snare 30% to the left",
+   "expected": "fl_set_track",
+   "passed": true,
+   "detail": "{\"pan_pct\": -30, \"track\": \"snare\"}",
+   "calls": [
+    {
+     "tool": "fl_set_track",
+     "args": {
+      "pan_pct": -30,
+      "track": "snare"
+     }
+    }
+   ],
+   "reply": "Proposed for your approval: Snare: pan 0% -> -30%.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 0.4
+  },
+  {
+   "id": 4,
+   "prompt": "Set the bass fader to exactly -6 dB",
+   "expected": "fl_set_track",
+   "passed": true,
+   "detail": "{\"track\": \"bass\", \"volume_db\": -6}",
+   "calls": [
+    {
+     "tool": "fl_set_track",
+     "args": {
+      "track": "bass",
+      "volume_db": -6
+     }
+    }
+   ],
+   "reply": "Proposed for your approval: Bass: volume -3.0 dB -> -6.0 dB.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 0.3
+  },
+  {
+   "id": 5,
+   "prompt": "Cut 3 dB of low end on the Bass with the built-in EQ at 120 Hz",
+   "expected": "fl_set_track",
+   "passed": true,
+   "detail": "{\"eq_band\": \"low\", \"eq_freq_hz\": 120, \"eq_gain_db\": -3, \"track\": \"Bass\"}",
+   "calls": [
+    {
+     "tool": "fl_set_track",
+     "args": {
+      "eq_band": "low",
+      "eq_freq_hz": 120,
+      "eq_gain_db": -3,
+      "track": "Bass"
+     }
+    }
+   ],
+   "reply": "Proposed for your approval: Bass: low EQ gain 2.0 dB -> -3.0 dB, low EQ freq 80 Hz -> 120 Hz.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 0.5
+  },
+  {
+   "id": 6,
+   "prompt": "Undo that last change",
+   "expected": "fl_undo",
+   "passed": true,
+   "detail": "{}",
+   "calls": [
+    {
+     "tool": "fl_undo",
+     "args": {}
+    }
+   ],
+   "reply": "Proposed for your approval: Undo change c_a57ef812 on Kick (volume back to 0.0 dB).",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 0.5
+  },
+  {
+   "id": 7,
+   "prompt": "Is anything clipping? Listen for 10 seconds.",
+   "expected": "fl_watch_peaks",
+   "passed": true,
+   "detail": "{\"seconds\": 10}",
+   "calls": [
+    {
+     "tool": "fl_watch_peaks",
+     "args": {
+      "seconds": 10
+     }
+    }
+   ],
+   "reply": "Lead Synth clipped 4x (max +0.98 dBFS); trim to peak near -6 dBFS. Proposed for your approval: Lead Synth: volume -5.0 dB -> -12.0 dB.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 3.3
+  },
+  {
+   "id": 8,
+   "prompt": "Analyze my mix at /private/tmp/sp_latency_stage/fixtures/audio/pink.wav",
+   "expected": "analyze_audio",
+   "passed": true,
+   "detail": "{\"path\": \"/private/tmp/sp_latency_stage/fixtures/audio/pink.wav\"}",
+   "calls": [
+    {
+     "tool": "analyze_audio",
+     "args": {
+      "path": "/private/tmp/sp_latency_stage/fixtures/audio/pink.wav"
+     }
+    }
+   ],
+   "reply": "The mix has an integrated loudness of -16.3 LUFS and a true peak of -6.37 dBTP. The spectral balance is very flat across all bands, and the correlation mean of 0.001 indicates a highly uncorrelated stereo image.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 5.9
+  },
+  {
+   "id": 9,
+   "prompt": "How loud is /private/tmp/sp_latency_stage/fixtures/audio/bright.wav compared with my reference /private/tmp/sp_latency_stage/fixtures/audio/pink.wav?",
+   "expected": "analyze_audio",
+   "passed": true,
+   "detail": "{\"path\": \"/private/tmp/sp_latency_stage/fixtures/audio/bright.wav\", \"reference_path\": \"/private/tmp/sp_latency_stage/fixtures/audio/pink.wav\"}",
+   "calls": [
+    {
+     "tool": "analyze_audio",
+     "args": {
+      "path": "/private/tmp/sp_latency_stage/fixtures/audio/bright.wav",
+      "reference_path": "/private/tmp/sp_latency_stage/fixtures/audio/pink.wav"
+     }
+    }
+   ],
+   "reply": "The integrated loudness is -16.3 LUFS, which is 0.0 LU relative to the reference.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 4.4
+  },
+  {
+   "id": 10,
+   "prompt": "My mix /private/tmp/sp_latency_stage/fixtures/audio/bright.wav is too bright compared to my reference /private/tmp/sp_latency_stage/fixtures/audio/pink.wav.",
+   "expected": "diagnose_complaint",
+   "passed": true,
+   "detail": "{\"analysis_id\": \"6996305f40a3\", \"complaint\": \"too bright compared to my reference\"}",
+   "calls": [
+    {
+     "tool": "analyze_audio",
+     "args": {
+      "path": "/private/tmp/sp_latency_stage/fixtures/audio/bright.wav",
+      "reference_path": "/private/tmp/sp_latency_stage/fixtures/audio/pink.wav"
+     }
+    },
+    {
+     "tool": "diagnose_complaint",
+     "args": {
+      "analysis_id": "6996305f40a3",
+      "complaint": "too bright compared to my reference"
+     }
+    }
+   ],
+   "reply": "The highs: +5.4 dB at 5\u201320 kHz vs the reference; cut the high EQ band on the master by 5.4 dB at 8 kHz. Proposed for your approval: Master: high EQ gain 0.0 dB -> -5.4 dB, high EQ freq 7096 Hz -> 8000 Hz.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 4.8
+  },
+  {
+   "id": 11,
+   "prompt": "The export at /private/tmp/sp_latency_stage/fixtures/audio/muddy.wav sounds boxy.",
+   "expected": "diagnose_complaint",
+   "passed": true,
+   "detail": "{\"analysis_id\": \"128784c52aa7\", \"complaint\": \"sounds boxy\"}",
+   "calls": [
+    {
+     "tool": "analyze_audio",
+     "args": {
+      "path": "/private/tmp/sp_latency_stage/fixtures/audio/muddy.wav"
+     }
+    },
+    {
+     "tool": "diagnose_complaint",
+     "args": {
+      "analysis_id": "128784c52aa7",
+      "complaint": "sounds boxy"
+     }
+    }
+   ],
+   "reply": "The low mids: +3.8 dB at 150\u2013500 Hz vs a line fitted to the spectrum; cut the mid EQ band on the master by 3.8 dB at 300 Hz. Proposed for your approval: Master: mid EQ gain 0.0 dB -> -3.8 dB, mid EQ freq 893 Hz -> 300 Hz.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 3.1
+  },
+  {
+   "id": 12,
+   "prompt": "My mix at /private/tmp/sp_latency_stage/fixtures/audio/pink.wav sounds bad. Fix it.",
+   "expected": "clarify",
+   "passed": true,
+   "detail": "asked: What sounds wrong? Pick the closest option.",
+   "calls": [
+    {
+     "tool": "analyze_audio",
+     "args": {
+      "path": "/private/tmp/sp_latency_stage/fixtures/audio/pink.wav"
+     }
+    },
+    {
+     "tool": "diagnose_complaint",
+     "args": {
+      "analysis_id": "e6da6f00146a",
+      "complaint": "sounds bad"
+     }
+    }
+   ],
+   "reply": "What sounds wrong? Pick the closest option.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": true,
+   "seconds": 2.4
+  },
+  {
+   "id": 13,
+   "prompt": "Ugh, the whole thing just sounds off. Make it better.",
+   "expected": "no_write",
+   "passed": true,
+   "detail": "no writes proposed",
+   "calls": [],
+   "reply": "I need to measure the mix to understand what is \"off.\" Please provide the absolute path to your exported mix WAV file.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 1.2
+  },
+  {
+   "id": 14,
+   "prompt": "I exported /private/tmp/sp_latency_stage/fixtures/audio/bright.wav, then fixed the brightness and re-exported to /private/tmp/sp_latency_stage/fixtures/audio/bright_fixed.wav. Did the fix work?",
+   "expected": "verify_fix",
+   "passed": true,
+   "detail": "{\"after_path\": \"/private/tmp/sp_latency_stage/fixtures/audio/bright_fixed.wav\", \"before_analysis_id\": \"4eb52b8a9e77\", \"complaint\": \"too bright\"}",
+   "calls": [
+    {
+     "tool": "analyze_audio",
+     "args": {
+      "path": "/private/tmp/sp_latency_stage/fixtures/audio/bright.wav"
+     }
+    },
+    {
+     "tool": "verify_fix",
+     "args": {
+      "after_path": "/private/tmp/sp_latency_stage/fixtures/audio/bright_fixed.wav",
+      "before_analysis_id": "4eb52b8a9e77",
+      "complaint": "too bright"
+     }
+    }
+   ],
+   "reply": "Yes, the fix worked. The high-frequency level (5\u201320 kHz) dropped by 3.36 dB, and the integrated loudness remained stable at -16.3 LUFS.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 5.0
+  },
+  {
+   "id": 15,
+   "prompt": "Does the melody in /private/tmp/sp_latency_stage/fixtures/midi/melody_c_major_3wrong.mid have any wrong notes?",
+   "expected": "analyze_midi",
+   "passed": true,
+   "detail": "{\"path\": \"/private/tmp/sp_latency_stage/fixtures/midi/melody_c_major_3wrong.mid\"}",
+   "calls": [
+    {
+     "tool": "analyze_midi",
+     "args": {
+      "path": "/private/tmp/sp_latency_stage/fixtures/midi/melody_c_major_3wrong.mid"
+     }
+    }
+   ],
+   "reply": "Yes, there are 3 notes out of key for C major at beats 5.0, 13.5, and 20.5.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 1.7
+  },
+  {
+   "id": 16,
+   "prompt": "Fix the out-of-key notes in /private/tmp/sp_latency_stage/fixtures/midi/melody_c_major_3wrong.mid",
+   "expected": "fix_midi",
+   "passed": true,
+   "detail": "{\"fix\": \"snap_to_scale\", \"key\": \"C major\", \"path\": \"/private/tmp/sp_latency_stage/fixtures/midi/melody_c_major_3wrong.mid\"}",
+   "calls": [
+    {
+     "tool": "fix_midi",
+     "args": {
+      "fix": "snap_to_scale",
+      "key": "C major",
+      "path": "/private/tmp/sp_latency_stage/fixtures/midi/melody_c_major_3wrong.mid"
+     }
+    }
+   ],
+   "reply": "Proposed for your approval: Snap out-of-key notes to the scale in melody_c_major_3wrong.mid (key C major); writes a fixed .mid and MCP_Apply.pyscript for the piano roll.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 0.5
+  },
+  {
+   "id": 17,
+   "prompt": "Quantize /private/tmp/sp_latency_stage/fixtures/midi/sloppy.mid to 16th notes",
+   "expected": "fix_midi",
+   "passed": true,
+   "detail": "{\"fix\": \"quantize\", \"grid_beats\": 0.25, \"path\": \"/private/tmp/sp_latency_stage/fixtures/midi/sloppy.mid\"}",
+   "calls": [
+    {
+     "tool": "fix_midi",
+     "args": {
+      "fix": "quantize",
+      "grid_beats": 0.25,
+      "path": "/private/tmp/sp_latency_stage/fixtures/midi/sloppy.mid"
+     }
+    }
+   ],
+   "reply": "Proposed for your approval: Quantize note timing in sloppy.mid (grid 0.25 beats); writes a fixed .mid and MCP_Apply.pyscript for the piano roll.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 0.4
+  },
+  {
+   "id": 18,
+   "prompt": "/private/tmp/sp_latency_stage/fixtures/midi/robotic.mid sounds robotic and stiff, make it feel more human",
+   "expected": "fix_midi",
+   "passed": true,
+   "detail": "{\"fix\": \"humanize\", \"path\": \"/private/tmp/sp_latency_stage/fixtures/midi/robotic.mid\"}",
+   "calls": [
+    {
+     "tool": "fix_midi",
+     "args": {
+      "fix": "humanize",
+      "path": "/private/tmp/sp_latency_stage/fixtures/midi/robotic.mid"
+     }
+    }
+   ],
+   "reply": "I have proposed a humanization fix for the MIDI file to reduce the stiffness. Please approve the change in the SoundPilot panel.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 0.9
+  },
+  {
+   "id": 19,
+   "prompt": "Play /private/tmp/sp_latency_stage/fixtures/midi/scale_8.mid on my selected synth so I can hear it",
+   "expected": "fl_play_midi",
+   "passed": true,
+   "detail": "{\"path\": \"/private/tmp/sp_latency_stage/fixtures/midi/scale_8.mid\", \"record\": false}",
+   "calls": [
+    {
+     "tool": "fl_play_midi",
+     "args": {
+      "path": "/private/tmp/sp_latency_stage/fixtures/midi/scale_8.mid",
+      "record": false
+     }
+    }
+   ],
+   "reply": "Played scale_8.mid live on the selected channel (8 notes, 2 s at 120 BPM). PROBE P8 (unverified): FL may only receive notes from the 'MA to FL' port while its window is focused; keep FL in front during the take.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 0.4
+  },
+  {
+   "id": 20,
+   "prompt": "Record /private/tmp/sp_latency_stage/fixtures/midi/scale_8.mid into the piano roll starting at bar 5",
+   "expected": "fl_play_midi",
+   "passed": true,
+   "detail": "{\"path\": \"/private/tmp/sp_latency_stage/fixtures/midi/scale_8.mid\", \"record\": true, \"start_bar\": 5}",
+   "calls": [
+    {
+     "tool": "fl_play_midi",
+     "args": {
+      "path": "/private/tmp/sp_latency_stage/fixtures/midi/scale_8.mid",
+      "record": true,
+      "start_bar": 5
+     }
+    }
+   ],
+   "reply": "Proposed for your approval: Record scale_8.mid into FL on the selected channel, starting at bar 5.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 0.5
+  }
+ ]
+}

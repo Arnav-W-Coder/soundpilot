@@ -1,0 +1,232 @@
+{
+ "provider": "aistudio",
+ "model": "gemma4:31b-cloud",
+ "label": "fallback",
+ "fallback": "ollama",
+ "date": "2026-10-26T00:47:24.519519+00:00",
+ "total_s": 10.9,
+ "rows": [
+  {
+   "turn": "kick_down",
+   "prompt": "turn the kick down 2 dB",
+   "wall_s": 1.35,
+   "llm_calls": 1,
+   "llm_s": 1.34,
+   "retry_wait_s": 0.0,
+   "retries": 0,
+   "tool_s": 0.0,
+   "tool_calls": 0,
+   "fl_round_trips": 16,
+   "in_tokens": 2842,
+   "out_tokens": 26,
+   "thought_tokens": 0,
+   "calls": [
+    {
+     "s": 1.34,
+     "retry_wait_s": 0.0,
+     "in": 2842,
+     "out": 26,
+     "thought": null
+    }
+   ],
+   "error": null,
+   "tools": [
+    "fl_set_track"
+   ],
+   "proposals": 1,
+   "needs_clarification": false,
+   "reply": "Proposed for your approval: Kick: volume 0.0 dB -> -2.0 dB.",
+   "reply_source": "tools"
+  },
+  {
+   "turn": "overview",
+   "prompt": "what's on my mixer?",
+   "wall_s": 2.68,
+   "llm_calls": 2,
+   "llm_s": 2.67,
+   "retry_wait_s": 0.0,
+   "retries": 0,
+   "tool_s": 0.006,
+   "tool_calls": 1,
+   "fl_round_trips": 274,
+   "in_tokens": 6900,
+   "out_tokens": 74,
+   "thought_tokens": 0,
+   "calls": [
+    {
+     "s": 0.98,
+     "retry_wait_s": 0.0,
+     "in": 2842,
+     "out": 20,
+     "thought": null
+    },
+    {
+     "s": 1.69,
+     "retry_wait_s": 0.0,
+     "in": 4058,
+     "out": 54,
+     "thought": null
+    }
+   ],
+   "error": null,
+   "tools": [
+    "fl_get_mix_overview"
+   ],
+   "proposals": 0,
+   "needs_clarification": false,
+   "reply": "Your mixer is set to 120 BPM and contains 12 active tracks, including Kick, Snare, Bass, and Vocal. The Master track has Fruity Limiter, and several tracks like the Pad and Bass have built-in EQ settings applied.",
+   "reply_source": "model"
+  },
+  {
+   "turn": "pan_hats",
+   "prompt": "pan the hats 30% left",
+   "wall_s": 2.8,
+   "llm_calls": 3,
+   "llm_s": 2.8,
+   "retry_wait_s": 0.0,
+   "retries": 0,
+   "tool_s": 0.006,
+   "tool_calls": 1,
+   "fl_round_trips": 290,
+   "in_tokens": 10104,
+   "out_tokens": 76,
+   "thought_tokens": 0,
+   "calls": [
+    {
+     "s": 1.05,
+     "retry_wait_s": 0.0,
+     "in": 2843,
+     "out": 26,
+     "thought": null
+    },
+    {
+     "s": 0.93,
+     "retry_wait_s": 0.0,
+     "in": 2925,
+     "out": 20,
+     "thought": null
+    },
+    {
+     "s": 0.82,
+     "retry_wait_s": 0.0,
+     "in": 4336,
+     "out": 30,
+     "thought": null
+    }
+   ],
+   "error": null,
+   "tools": [
+    "fl_set_track",
+    "fl_get_mix_overview"
+   ],
+   "proposals": 0,
+   "needs_clarification": false,
+   "reply": "I found two hat tracks: \"Hat Open\" and \"Hat Closed\". Which one should I pan -30%?",
+   "reply_source": "model"
+  },
+  {
+   "turn": "bright",
+   "prompt": "analyze /private/tmp/sp_latency_stage/fixtures/audio/bright.wav against /private/tmp/sp_latency_stage/fixtures/audio/pink.wav, it's too bright",
+   "wall_s": 2.49,
+   "llm_calls": 2,
+   "llm_s": 0.88,
+   "retry_wait_s": 0.0,
+   "retries": 0,
+   "tool_s": 1.615,
+   "tool_calls": 2,
+   "fl_round_trips": 18,
+   "in_tokens": 5940,
+   "out_tokens": 99,
+   "thought_tokens": 0,
+   "calls": [
+    {
+     "s": 0.44,
+     "retry_wait_s": 0.0,
+     "in": 2724,
+     "out": 57,
+     "thought": null
+    },
+    {
+     "s": 0.44,
+     "retry_wait_s": 0.0,
+     "in": 3216,
+     "out": 42,
+     "thought": null
+    }
+   ],
+   "error": null,
+   "tools": [
+    "analyze_audio",
+    "diagnose_complaint"
+   ],
+   "proposals": 1,
+   "needs_clarification": false,
+   "reply": "The highs: +5.4 dB at 5\u201320 kHz vs the reference; cut the high EQ band on the master by 5.4 dB at 8 kHz. Proposed for your approval: Master: high EQ gain 0.0 dB -> -5.4 dB, high EQ freq 7096 Hz -> 8000 Hz.",
+   "reply_source": "tools"
+  },
+  {
+   "turn": "arpeggio",
+   "prompt": "play an E major arpeggio",
+   "wall_s": 1.04,
+   "llm_calls": 1,
+   "llm_s": 1.03,
+   "retry_wait_s": 0.0,
+   "retries": 0,
+   "tool_s": 0.017,
+   "tool_calls": 1,
+   "fl_round_trips": 1,
+   "in_tokens": 2687,
+   "out_tokens": 130,
+   "thought_tokens": 0,
+   "calls": [
+    {
+     "s": 1.03,
+     "retry_wait_s": 0.0,
+     "in": 2687,
+     "out": 130,
+     "thought": null
+    }
+   ],
+   "error": null,
+   "tools": [
+    "fl_play_midi"
+   ],
+   "proposals": 0,
+   "needs_clarification": false,
+   "reply": "Played E4 G#4 B4 E5 live on the selected channel (4 notes, 0.5 s at 120 BPM). PROBE P8 (unverified): FL may only receive notes from the 'MA to FL' port while its window is focused; keep FL in front during the take.",
+   "reply_source": "tools"
+  },
+  {
+   "turn": "clipping",
+   "prompt": "is anything clipping?",
+   "wall_s": 0.51,
+   "llm_calls": 1,
+   "llm_s": 0.42,
+   "retry_wait_s": 0.0,
+   "retries": 0,
+   "tool_s": 0.094,
+   "tool_calls": 1,
+   "fl_round_trips": 2440,
+   "in_tokens": 2684,
+   "out_tokens": 11,
+   "thought_tokens": 0,
+   "calls": [
+    {
+     "s": 0.42,
+     "retry_wait_s": 0.0,
+     "in": 2684,
+     "out": 11,
+     "thought": null
+    }
+   ],
+   "error": null,
+   "tools": [
+    "fl_watch_peaks"
+   ],
+   "proposals": 1,
+   "needs_clarification": false,
+   "reply": "Lead Synth clipped 4x (max +0.98 dBFS); trim to peak near -6 dBFS. Proposed for your approval: Lead Synth: volume -5.0 dB -> -12.0 dB.",
+   "reply_source": "tools"
+  }
+ ]
+}
