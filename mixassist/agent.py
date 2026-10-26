@@ -6,15 +6,17 @@ import json
 import logging
 import os
 import threading
+import time
 import uuid
 from dataclasses import dataclass, field
 
 from mixassist.errors import ToolError, error_dict, is_error
 from mixassist.fl import get_fl
 from mixassist.fl.tracks import resolve_track
-from mixassist.llm.base import LLMProvider, ToolCall, function_declarations, parse_text_tool_calls
+from mixassist.llm.base import LLMProvider, LLMResponse, ToolCall, function_declarations, parse_text_tool_calls
+from mixassist.logctx import clip, log_context
 from mixassist.schemas import TOOL_NAMES
-from mixassist.tools import call_tool, is_write, validate_args
+from mixassist.tools import call_tool, is_write, summarize_result, validate_args
 
 log = logging.getLogger(__name__)
 
@@ -182,6 +184,7 @@ def create_proposal(tool: str, args: dict, why: str, session_id: str | None = No
     }
     with _plock:
         _proposals[proposal["proposal_id"]] = {**proposal, "_session": session_id, "_result": None}
+    log.info("proposal %s created for %s: %s", proposal["proposal_id"], tool, preview["summary"])
     return proposal
 
 
@@ -208,10 +211,12 @@ def apply_proposal(proposal_id: str) -> dict:
             return {"proposal_id": proposal_id, "tool": p["tool"],
                     "result": error_dict("NOT_FOUND", f"proposal {proposal_id} is already {p['status']}")}
         p["status"] = "applying"
+    log.info("proposal %s apply start: %s", proposal_id, p["preview"]["summary"])
     result = call_tool(p["tool"], p["args"])
     with _plock:
         p["status"] = "failed" if is_error(result) else "applied"
         p["_result"] = result
+    log.info("proposal %s %s: %s", proposal_id, p["status"], summarize_result(p["tool"], result))
     return {"proposal_id": proposal_id, "tool": p["tool"], "result": result}
 
 
@@ -220,6 +225,7 @@ def discard_proposal(proposal_id: str) -> dict:
         p = _proposals[proposal_id]
         if p["status"] == "pending":
             p["status"] = "discarded"
+        log.info("proposal %s discard: status %s", proposal_id, p["status"])
         return {"proposal_id": proposal_id, "status": p["status"]}
 
 
@@ -317,6 +323,7 @@ class Agent:
         self.sessions: dict[str, Session] = {}
         self._slock = threading.Lock()
         self.tools = function_declarations()
+        self._local = threading.local()  # per-turn LLM call count; turns of different sessions run in parallel
 
     @property
     def provider(self) -> LLMProvider:
@@ -342,7 +349,42 @@ class Agent:
     def run_turn(self, session_id: str, message: str) -> TurnResult:
         session = self.session(session_id)
         with session.lock:
-            return self._turn(session, message)
+            turn_no = 1 + sum(1 for m in session.messages if m["role"] == "user")
+            with log_context(f"s={session_id[:8]}#{turn_no}"):
+                return self._logged_turn(session, message)
+
+    def _logged_turn(self, session: Session, message: str) -> TurnResult:
+        t0 = time.monotonic()
+        log.info("chat start: %r", clip(message, 80))
+        self._local.llm_calls = 0
+        try:
+            turn = self._turn(session, message)
+        except Exception as exc:
+            log.error("chat failed after %.1f s, %d LLM call(s): %s: %s", time.monotonic() - t0, self._local.llm_calls,
+                      type(exc).__name__, clip(exc, 200))
+            raise
+        log.info("chat end in %.1f s: %d LLM call(s), %d tool call(s), %d proposal(s), needs_clarification=%s",
+                 time.monotonic() - t0, self._local.llm_calls, len(turn.tool_trace), len(turn.proposals),
+                 turn.needs_clarification)
+        return turn
+
+    def _llm(self, prompt: list[dict]) -> LLMResponse:
+        provider = self.provider
+        self._local.llm_calls += 1
+        n = self._local.llm_calls
+        log.info("llm #%d start: %s %s (%d messages)", n, provider.name, provider.model, len(prompt))
+        t0 = time.monotonic()
+        try:
+            response = provider.chat(prompt, self.tools, self.temperature)
+        except Exception as exc:
+            log.error("llm #%d failed after %.1f s: %s", n, time.monotonic() - t0, clip(exc, 200))
+            raise
+        if response.tool_calls:
+            what = f"{len(response.tool_calls)} function call(s) {[c.name for c in response.tool_calls]}"
+        else:
+            what = f"text ({len(response.text or '')} chars)" if response.text else "empty response"
+        log.info("llm #%d done in %.1f s: %s", n, time.monotonic() - t0, what)
+        return response
 
     def _turn(self, session: Session, message: str) -> TurnResult:
         session.messages.append({"role": "user", "content": message})
@@ -355,10 +397,10 @@ class Agent:
 
         for _ in range(MAX_MODEL_TURNS):
             prompt = [{"role": "system", "content": self.system_prompt}] + session.messages
-            response = self.provider.chat(prompt, self.tools, self.temperature)
+            response = self._llm(prompt)
             if not response.text and not response.tool_calls:
                 log.warning("model returned an empty response; retrying once")
-                response = self.provider.chat(prompt, self.tools, self.temperature)
+                response = self._llm(prompt)
             calls = list(response.tool_calls)
             if not calls and response.text:
                 calls = parse_text_tool_calls(response.text, set(TOOL_NAMES))
@@ -443,7 +485,6 @@ class Agent:
                 return json.dumps(result), result
             if not existing:
                 turn.proposals.append(proposal)
-                log.info("proposal %s for %s: %s", proposal["proposal_id"], name, proposal["preview"]["summary"])
             result = {"status": "proposed", "proposal_id": proposal["proposal_id"], "summary": proposal["preview"]["summary"],
                       "note": "Not applied yet: the user approves it in the SoundPilot panel."}
             return json.dumps(result), result

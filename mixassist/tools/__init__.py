@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import copy
 import importlib
-import json
 import logging
 import time
 from typing import Callable
@@ -11,6 +10,7 @@ from typing import Callable
 import jsonschema
 
 from mixassist.errors import ToolError, error_dict, is_error
+from mixassist.logctx import clip, compact
 from mixassist.schemas import SCHEMAS, TOOL_NAMES
 
 log = logging.getLogger(__name__)
@@ -186,32 +186,32 @@ def validate_args(name: str, args: dict) -> dict:
     return apply_defaults(name, args)
 
 
-LOG_CHARS = 400
-
-
-def _compact(value, limit: int = LOG_CHARS) -> str:
-    text = json.dumps(value, default=str, separators=(",", ":"))
-    return text if len(text) <= limit else text[:limit] + f"...(+{len(text) - limit} chars)"
-
-
-def summarize_result(result: dict) -> str:
-    """Scalars and small dicts in full; lists as their length (warnings and errors are kept)."""
+def summarize_result(name: str, result: dict) -> str:
+    """One short line: the error code and message, or the result's scalars with lists shown as counts."""
     if is_error(result):
-        return _compact(result["error"])
+        e = result["error"]
+        return f"ERROR {e.get('code')}: {clip(e.get('message', ''), 160)}"
+    if name == "fl_play_midi":
+        keys = ("mode", "notes_sent", "bpm", "duration_s", "start_bar")
+        out = {k: result[k] for k in keys if k in result}
+        out["lateness_p95_ms"] = (result.get("timing_lateness_ms") or {}).get("p95")
+        out["channel"] = (result.get("channel") or {}).get("name")
+        out["warnings"] = [clip(w, 90) for w in result.get("warnings") or []]
+        return compact(out, max_str=90)
     out = {}
     for k, v in result.items():
-        if k == "warnings" or not isinstance(v, (list, dict)):
-            out[k] = v
-        elif isinstance(v, dict) and len(v) <= 6:
-            out[k] = v
+        if isinstance(v, list):
+            out[k] = f"<{len(v)}>"
+        elif isinstance(v, dict):
+            out[k] = v if len(v) <= 4 and not any(isinstance(x, (list, dict)) for x in v.values()) else f"<{len(v)} keys>"
         else:
-            out[k] = f"<{len(v)} items>"
-    return _compact(out)
+            out[k] = v
+    return compact(out)
 
 
 def call_tool(name: str, args: dict | None) -> dict:
     """Validate and run one tool. Never raises: failures come back as the §3.1 error dict."""
-    log.info("tool %s args=%s", name, _compact(args or {}))
+    log.info("tool %s start args=%s", name, compact(args or {}))
     t0 = time.perf_counter()
     try:
         clean = validate_args(name, args or {})
@@ -225,7 +225,7 @@ def call_tool(name: str, args: dict | None) -> dict:
         log.exception("tool %s failed", name)
         result = error_dict(code, f"{name} failed: {type(exc).__name__}: {exc}")
     (log.warning if is_error(result) else log.info)(
-        "tool %s -> %s (%.0f ms)", name, summarize_result(result), (time.perf_counter() - t0) * 1000)
+        "tool %s done in %.2f s: %s", name, time.perf_counter() - t0, summarize_result(name, result))
     return result
 
 

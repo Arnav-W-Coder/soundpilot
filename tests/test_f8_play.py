@@ -174,10 +174,11 @@ def test_tool_call_is_logged_with_args_and_result(active_fake, caplog):
     with caplog.at_level("INFO", logger="mixassist.tools"):
         call_tool("fl_play_midi", {"notes": [{"pitch": 64, "start_beat": 0, "length_beats": 0.5}], "channel": 2})
     lines = [r.getMessage() for r in caplog.records if r.name == "mixassist.tools"]
-    assert any(line.startswith("tool fl_play_midi args=") and '"pitch":64' in line and '"channel":2' in line for line in lines)
-    result_line = next(line for line in lines if line.startswith("tool fl_play_midi ->"))
+    assert any(line.startswith("tool fl_play_midi start args=") and '"pitch":64' in line and '"channel":2' in line
+               for line in lines)
+    result_line = next(line for line in lines if line.startswith("tool fl_play_midi done in "))
     assert '"mode":"live"' in result_line and '"notes_sent":1' in result_line and '"bpm":120.0' in result_line
-    assert '"channel":{"index":2' in result_line and '"warnings":[' in result_line
+    assert '"duration_s":0.25' in result_line and '"warnings":["PROBE P8' in result_line
 
 
 def test_pattern_mode_warns():

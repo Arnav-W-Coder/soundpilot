@@ -94,6 +94,8 @@ SOUNDPILOT_FL=bridge .venv/bin/uvicorn mixassist.api:app --port 8000   # real FL
 
 `SOUNDPILOT_FL` chooses the FL backend: `fake` (default) or `bridge`. Running `.venv/bin/python -m mixassist --http [--bridge]` starts the API too.
 
+The terminal logs one line per chat event. Each line carries a tag `[s=<session>#<turn> +<elapsed>s]` and covers: chat start and end, each LLM call, provider retries with the wait before the next try, each tool call with compact arguments and result, and proposals being created, applied or discarded. A turn that keeps printing retry lines is waiting on quota, not stuck. Set `SOUNDPILOT_LOG=DEBUG` or `WARNING` to change the level (default `INFO`).
+
 ### Frontend
 
 `cd web && npm install && npm run dev`, then open http://127.0.0.1:5173. Start the API first with `.venv/bin/uvicorn mixassist.api:app --port 8000`. Set the API URL with `VITE_API_BASE_URL` (see `web/.env.example`). File inputs take absolute paths on the server machine. The dev server is pinned to port 5173 because that's the origin CORS allows.

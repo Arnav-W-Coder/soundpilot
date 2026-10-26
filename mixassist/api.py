@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import logging
-import os
 import threading
 from contextlib import asynccontextmanager
 
@@ -16,24 +15,14 @@ from mixassist.envfile import load_env
 from mixassist.errors import ToolError, is_error
 from mixassist.fl import get_fl
 from mixassist.llm import LLMError, provider_config
+from mixassist.logctx import configure as configure_logging
+from mixassist.logctx import log_context
 from mixassist.tools import call_tool
 
 load_env()
 log = logging.getLogger("mixassist.api")
 
-
-def _setup_logging() -> None:
-    """uvicorn configures only its own loggers; without this, mixassist INFO lines (tool calls) are dropped."""
-    pkg = logging.getLogger("mixassist")
-    if pkg.handlers or logging.getLogger().handlers:
-        return
-    handler = logging.StreamHandler()
-    handler.setFormatter(logging.Formatter("%(levelname)s:     %(name)s: %(message)s"))
-    pkg.addHandler(handler)
-    pkg.setLevel(os.environ.get("SOUNDPILOT_LOG", "INFO").upper())
-
-
-_setup_logging()
+configure_logging()
 
 _llm_state: dict = {"provider": None, "model": None, "available": None, "message": "not checked yet"}
 
@@ -175,22 +164,27 @@ def proposals(session_id: str | None = None) -> dict:
 @app.post("/api/proposals/{proposal_id}/apply")
 def apply(proposal_id: str) -> dict:
     try:
-        return agent_mod.apply_proposal(proposal_id)
+        with log_context(f"apply {proposal_id}"):
+            return agent_mod.apply_proposal(proposal_id)
     except KeyError:
+        log.warning("apply: unknown proposal %s", proposal_id)
         raise HTTPException(status_code=404, detail=f"unknown proposal {proposal_id}")
 
 
 @app.post("/api/proposals/{proposal_id}/discard")
 def discard(proposal_id: str) -> dict:
     try:
-        return agent_mod.discard_proposal(proposal_id)
+        with log_context(f"discard {proposal_id}"):
+            return agent_mod.discard_proposal(proposal_id)
     except KeyError:
+        log.warning("discard: unknown proposal %s", proposal_id)
         raise HTTPException(status_code=404, detail=f"unknown proposal {proposal_id}")
 
 
 @app.post("/api/undo")
 def undo(body: UndoBody | None = None) -> dict:
-    return call_tool("fl_undo", _args(body) if body else {})
+    with log_context("undo"):
+        return call_tool("fl_undo", _args(body) if body else {})
 
 
 @app.post("/api/analyze/audio")

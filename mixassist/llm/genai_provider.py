@@ -6,6 +6,7 @@ import logging
 import os
 import subprocess
 import time
+from contextlib import contextmanager
 
 from mixassist.llm.base import LLMError, LLMProvider, LLMResponse, ToolCall
 
@@ -37,13 +38,23 @@ class GenAIProvider(LLMProvider):
             self.location = location or os.environ.get("GOOGLE_CLOUD_LOCATION") or "global"
             if not self.project:
                 raise LLMError("Vertex needs a project: set GOOGLE_CLOUD_PROJECT or run `gcloud config set project ...`")
-            self.client = genai.Client(vertexai=True, project=self.project, location=self.location)
+            with _quiet_env_key_warning():
+                self.client = genai.Client(vertexai=True, project=self.project, location=self.location)
+            if _client_api_key(self.client):
+                log.warning("vertex: the client picked up an API key from the environment instead of ADC; "
+                            "unset GOOGLE_API_KEY")
+            else:
+                log.info("vertex: ADC credentials, project %s, location %s (API keys in the environment are not used)",
+                         self.project, self.location)
         elif kind == "aistudio":
             key = api_key or os.environ.get("GEMINI_API_KEY")
             if not key:
                 raise LLMError("AI Studio needs GEMINI_API_KEY")
             self.project, self.location = None, None
-            self.client = genai.Client(api_key=key)
+            with _quiet_env_key_warning():
+                self.client = genai.Client(api_key=key)
+            ignored = " (GOOGLE_API_KEY in the environment is ignored)" if os.environ.get("GOOGLE_API_KEY") else ""
+            log.info("aistudio: API key %s passed explicitly%s", "argument" if api_key else "GEMINI_API_KEY", ignored)
         else:
             raise ValueError(f"unknown genai provider {kind!r}")
 
@@ -52,23 +63,32 @@ class GenAIProvider(LLMProvider):
         from google.genai import errors
 
         attempts = len(self.backoff) + 1
-        for attempt in range(attempts):
+        for attempt in range(1, attempts + 1):
             try:
                 return fn()
             except errors.APIError as exc:
                 code = getattr(exc, "code", None)
-                if code in RETRY_CODES and attempt < attempts - 1:
-                    delay = self.backoff[attempt]
-                    log.warning("%s %s returned %s; retry %d/%d in %.0f s", self.name, self.model, code,
-                                attempt + 1, attempts - 1, delay)
-                    time.sleep(delay)
+                what = " ".join(str(x) for x in (code, getattr(exc, "status", None)) if x)
+                if code in RETRY_CODES and attempt < attempts:
+                    self._backoff(attempt, attempts, f"HTTP {what}")
                     continue
+                if code in RETRY_CODES:
+                    log.error("%s %s: giving up after %d attempts: HTTP %s", self.name, self.model, attempts, what)
                 raise LLMError(f"{self.name} {self.model}: {code} {getattr(exc, 'message', exc)}") from exc
             except Exception as exc:  # network errors etc.
-                if attempt < attempts - 1 and _transient(exc):
-                    time.sleep(self.backoff[attempt])
+                if _transient(exc) and attempt < attempts:
+                    self._backoff(attempt, attempts, type(exc).__name__)
                     continue
+                if _transient(exc):
+                    log.error("%s %s: giving up after %d attempts: %s", self.name, self.model, attempts,
+                              type(exc).__name__)
                 raise LLMError(f"{self.name} {self.model}: {type(exc).__name__}: {exc}") from exc
+
+    def _backoff(self, attempt: int, attempts: int, what: str) -> None:
+        delay = self.backoff[attempt - 1]
+        log.warning("%s %s: %s on attempt %d/%d; retrying in %g s", self.name, self.model, what,
+                    attempt, attempts, delay)
+        time.sleep(delay)
 
     def _contents(self, messages: list[dict]):
         from google.genai import types
@@ -166,6 +186,28 @@ class GenAIProvider(LLMProvider):
 def _unavailable(kind: str, model: str, exc) -> str:
     return (f"{kind}: model {model!r} is not available ({exc}). Documented IDs: gemma-4-26b-a4b-it-maas on Vertex "
             "(location global), gemma-4-26b-a4b-it or gemma-4-31b-it on AI Studio, gemma4:31b-cloud on Ollama.")
+
+
+class _DropEnvKeyWarning(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        return not str(record.msg).startswith("Both GOOGLE_API_KEY and GEMINI_API_KEY are set")
+
+
+@contextmanager
+def _quiet_env_key_warning():
+    """genai.Client() warns "Using GOOGLE_API_KEY" whenever both keys are set, even when it then uses ADC or the
+    explicit key; the provider logs the credentials it really uses instead."""
+    sdk_log = logging.getLogger("google_genai._api_client")
+    flt = _DropEnvKeyWarning()
+    sdk_log.addFilter(flt)
+    try:
+        yield
+    finally:
+        sdk_log.removeFilter(flt)
+
+
+def _client_api_key(client) -> str | None:
+    return getattr(getattr(client, "_api_client", None), "api_key", None)
 
 
 def _transient(exc: Exception) -> bool:

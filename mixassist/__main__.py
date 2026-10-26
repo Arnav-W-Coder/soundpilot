@@ -2,9 +2,7 @@
 from __future__ import annotations
 
 import argparse
-import logging
 import os
-import sys
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -20,9 +18,10 @@ def main(argv: list[str] | None = None) -> None:
     from mixassist.envfile import load_env
 
     load_env()
+    from mixassist.logctx import configure
+
     # stdout carries MCP JSON-RPC, so logs go to stderr.
-    logging.basicConfig(stream=sys.stderr, level=os.environ.get("SOUNDPILOT_LOG", "INFO"),
-                        format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    configure()
 
     if args.bridge:
         os.environ["SOUNDPILOT_FL"] = "bridge"
