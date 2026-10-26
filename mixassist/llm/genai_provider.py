@@ -4,16 +4,42 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import subprocess
 import time
 from contextlib import contextmanager
 
-from mixassist.llm.base import LLMError, LLMProvider, LLMResponse, ToolCall
+from mixassist import progress
+from mixassist.llm.base import (LLMError, LLMProvider, LLMResponse, RateLimitedError, ToolCall, max_output_tokens,
+                                parse_retry_delay)
 
 log = logging.getLogger(__name__)
 
 RETRY_CODES = {429, 500, 503}
 BACKOFF_S = (1, 2, 4, 8, 16)
+MAX_SERVER_DELAY_S = 60.0
+_RETRY_IN = re.compile(r"retry in (\d+(?:\.\d+)?)\s*s", re.I)
+
+
+def server_retry_delay(exc) -> float | None:
+    """The wait the server asked for: RetryInfo.retryDelay, a Retry-After header, or "Please retry in 20.4s"."""
+    details = getattr(exc, "details", None)
+    error = details.get("error") if isinstance(details, dict) else None
+    for item in (error or {}).get("details") or []:
+        if isinstance(item, dict) and str(item.get("@type", "")).endswith("RetryInfo"):
+            delay = parse_retry_delay(item.get("retryDelay"))
+            if delay is not None:
+                return delay
+    headers = getattr(getattr(exc, "response", None), "headers", None)
+    if headers is not None:
+        try:
+            delay = parse_retry_delay(headers.get("retry-after"))
+        except Exception:  # noqa: BLE001 - unusual header containers
+            delay = None
+        if delay is not None:
+            return delay
+    m = _RETRY_IN.search(str((error or {}).get("message") or getattr(exc, "message", "") or ""))
+    return float(m.group(1)) if m else None
 
 
 def gcloud_project() -> str | None:
@@ -27,12 +53,15 @@ def gcloud_project() -> str | None:
 
 class GenAIProvider(LLMProvider):
     def __init__(self, kind: str, model: str, project: str | None = None, location: str | None = None,
-                 api_key: str | None = None, backoff: tuple[float, ...] = BACKOFF_S):
+                 api_key: str | None = None, backoff: tuple[float, ...] = BACKOFF_S, max_wait_s: float | None = None):
         from google import genai
 
         self.name = kind
         self.model = model
         self.backoff = backoff
+        self.max_wait_s = max_wait_s  # give up (RateLimitedError) instead of waiting longer than this in total
+        # Gemma 4 on AI Studio thinks before answering unless asked not to; "default" keeps the model's choice.
+        self.minimal_thinking = (os.environ.get("SOUNDPILOT_THINKING") or "minimal").lower() != "default"
         if kind == "vertex":
             self.project = project or os.environ.get("GOOGLE_CLOUD_PROJECT") or gcloud_project()
             self.location = location or os.environ.get("GOOGLE_CLOUD_LOCATION") or "global"
@@ -63,31 +92,38 @@ class GenAIProvider(LLMProvider):
         from google.genai import errors
 
         attempts = len(self.backoff) + 1
+        waited = 0.0
         for attempt in range(1, attempts + 1):
             try:
                 return fn()
             except errors.APIError as exc:
                 code = getattr(exc, "code", None)
-                what = " ".join(str(x) for x in (code, getattr(exc, "status", None)) if x)
-                if code in RETRY_CODES and attempt < attempts:
-                    self._backoff(attempt, attempts, f"HTTP {what}")
-                    continue
-                if code in RETRY_CODES:
-                    log.error("%s %s: giving up after %d attempts: HTTP %s", self.name, self.model, attempts, what)
-                raise LLMError(f"{self.name} {self.model}: {code} {getattr(exc, 'message', exc)}") from exc
+                what = "HTTP " + " ".join(str(x) for x in (code, getattr(exc, "status", None)) if x)
+                if code not in RETRY_CODES:
+                    raise LLMError(f"{self.name} {self.model}: {code} {getattr(exc, 'message', exc)}") from exc
+                hint = server_retry_delay(exc)
+                message, last = f"{self.name} {self.model}: {code} {getattr(exc, 'message', exc)}", exc
             except Exception as exc:  # network errors etc.
-                if _transient(exc) and attempt < attempts:
-                    self._backoff(attempt, attempts, type(exc).__name__)
-                    continue
-                if _transient(exc):
-                    log.error("%s %s: giving up after %d attempts: %s", self.name, self.model, attempts,
-                              type(exc).__name__)
-                raise LLMError(f"{self.name} {self.model}: {type(exc).__name__}: {exc}") from exc
+                if not _transient(exc):
+                    raise LLMError(f"{self.name} {self.model}: {type(exc).__name__}: {exc}") from exc
+                what, hint = type(exc).__name__, None
+                message, last = f"{self.name} {self.model}: {type(exc).__name__}: {exc}", exc
+            delay = self.backoff[attempt - 1] if attempt < attempts else None
+            if delay is not None and hint is not None:
+                delay = min(max(hint, 0.5), MAX_SERVER_DELAY_S)
+            if delay is None or (self.max_wait_s is not None and waited + delay > self.max_wait_s):
+                log.error("%s %s: giving up after %d attempts: %s", self.name, self.model, attempt, what)
+                raise RateLimitedError(message, retry_after=hint) from last
+            self._backoff(attempt, attempts, what, delay, hint is not None)
+            waited += delay
 
-    def _backoff(self, attempt: int, attempts: int, what: str) -> None:
-        delay = self.backoff[attempt - 1]
-        log.warning("%s %s: %s on attempt %d/%d; retrying in %g s", self.name, self.model, what,
-                    attempt, attempts, delay)
+    def _backoff(self, attempt: int, attempts: int, what: str, delay: float, from_server: bool = False) -> None:
+        source = " (server's retry delay)" if from_server else ""
+        log.warning("%s %s: %s on attempt %d/%d; retrying in %g s%s", self.name, self.model, what,
+                    attempt, attempts, delay, source)
+        reason = "rate limit" if "429" in what else "server busy" if what.startswith("HTTP") else "network"
+        progress.emit("retry", f"{self.name} {reason} ({what}); retrying in {delay:g} s", provider=self.name,
+                      wait_s=delay, attempt=attempt)
         time.sleep(delay)
 
     def _contents(self, messages: list[dict]):
@@ -135,21 +171,44 @@ class GenAIProvider(LLMProvider):
         flush()
         return contents
 
+    def _tools(self, tools: list[dict]):
+        """Function declarations, built once per tool list (the agent passes the same list every call)."""
+        from google.genai import types
+
+        cached = getattr(self, "_tools_cache", None)
+        if cached is not None and cached[0] is tools:
+            return cached[1]
+        built = [types.Tool(function_declarations=[
+            types.FunctionDeclaration(name=t["name"], description=t["description"], parameters_json_schema=t["parameters"])
+            for t in tools
+        ])]
+        self._tools_cache = (tools, built)
+        return built
+
     def chat(self, messages: list[dict], tools: list[dict] | None, temperature: float = 0.0) -> LLMResponse:
         from google.genai import types
 
-        config_kwargs: dict = {"temperature": temperature}
+        config_kwargs: dict = {"temperature": temperature, "max_output_tokens": max_output_tokens()}
         if tools:
-            config_kwargs["tools"] = [types.Tool(function_declarations=[
-                types.FunctionDeclaration(name=t["name"], description=t["description"],
-                                          parameters_json_schema=t["parameters"])
-                for t in tools
-            ])]
+            config_kwargs["tools"] = self._tools(tools)
             config_kwargs["automatic_function_calling"] = types.AutomaticFunctionCallingConfig(disable=True)
-        config = types.GenerateContentConfig(**config_kwargs)
         contents = self._contents(messages)
-        response = self._with_retries(
-            lambda: self.client.models.generate_content(model=self.model, contents=contents, config=config))
+
+        def generate():
+            kwargs = dict(config_kwargs)
+            if self.minimal_thinking:
+                kwargs["thinking_config"] = types.ThinkingConfig(thinking_level="MINIMAL")
+            return self.client.models.generate_content(model=self.model, contents=contents,
+                                                       config=types.GenerateContentConfig(**kwargs))
+
+        try:
+            response = self._with_retries(generate)
+        except LLMError as exc:
+            if not (self.minimal_thinking and "thinking" in str(exc).lower() and getattr(exc.__cause__, "code", 0) == 400):
+                raise
+            log.info("%s %s rejects thinking_level=MINIMAL; using the model's default thinking", self.name, self.model)
+            self.minimal_thinking = False
+            response = self._with_retries(generate)
         texts, calls = [], []
         for cand in (response.candidates or [])[:1]:
             for part in (cand.content.parts if cand.content and cand.content.parts else []):

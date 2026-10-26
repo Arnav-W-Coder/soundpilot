@@ -4,6 +4,7 @@ from __future__ import annotations
 import ast
 import copy
 import json
+import os
 import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -31,6 +32,38 @@ class LLMResponse:
 
 class LLMError(Exception):
     """The provider failed after retries (network, auth, quota, unknown model)."""
+
+
+class RateLimitedError(LLMError):
+    """Retries ran out on a rate limit, an overloaded server or a network error; another provider may work."""
+
+    def __init__(self, message: str, retry_after: float | None = None):
+        super().__init__(message)
+        self.retry_after = retry_after
+
+
+DEFAULT_MAX_OUTPUT_TOKENS = 2048
+
+
+def max_output_tokens() -> int:
+    """Cap on generated tokens per call (SOUNDPILOT_MAX_OUTPUT_TOKENS): stops a runaway reply, never a tool call."""
+    try:
+        return max(256, int(os.environ.get("SOUNDPILOT_MAX_OUTPUT_TOKENS") or DEFAULT_MAX_OUTPUT_TOKENS))
+    except ValueError:
+        return DEFAULT_MAX_OUTPUT_TOKENS
+
+
+_DURATION = re.compile(r"^\s*(\d+(?:\.\d+)?)\s*s?\s*$")
+
+
+def parse_retry_delay(value) -> float | None:
+    """Seconds from a google.rpc.RetryInfo retryDelay ("42s", "1.5s") or a Retry-After header ("8")."""
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return float(value) if value >= 0 else None
+    m = _DURATION.match(str(value))
+    return float(m.group(1)) if m else None
 
 
 class LLMProvider(ABC):

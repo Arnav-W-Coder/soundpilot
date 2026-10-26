@@ -123,7 +123,7 @@ def _genai_provider(kind="vertex", backoff=(0, 0)):
     from mixassist.llm.genai_provider import GenAIProvider
 
     p = GenAIProvider.__new__(GenAIProvider)
-    p.name, p.model, p.backoff = kind, "gemma-test", backoff
+    p.name, p.model, p.backoff, p.max_wait_s = kind, "gemma-test", backoff, None
     return p
 
 
@@ -197,14 +197,15 @@ def test_ollama_retries_are_logged(monkeypatch, caplog):
 
     statuses = [503, 429, 200]
 
-    def post(url, json=None, timeout=None):
+    def handler(request):
         code = statuses.pop(0)
         body = {"message": {"content": "hi"}} if code == 200 else {"error": "busy"}
-        return httpx.Response(code, json=body, request=httpx.Request("POST", url))
+        return httpx.Response(code, json=body)
 
-    monkeypatch.setattr(httpx, "post", post)
+    provider = OllamaProvider("gemma4:31b-cloud", host="http://x", backoff=(0, 0, 0))
+    provider._client = httpx.Client(transport=httpx.MockTransport(handler))
     with caplog.at_level(logging.INFO, logger="mixassist"):
-        out = OllamaProvider("gemma4:31b-cloud", host="http://x", backoff=(0, 0, 0)).chat([], None)
+        out = provider.chat([], None)
     assert out.text == "hi"
     assert _lines(caplog) == ["ollama gemma4:31b-cloud: HTTP 503 on attempt 1/4; retrying in 0 s",
                               "ollama gemma4:31b-cloud: HTTP 429 on attempt 2/4; retrying in 0 s"]
@@ -213,11 +214,12 @@ def test_ollama_retries_are_logged(monkeypatch, caplog):
 def test_ollama_gives_up_after_connection_errors(monkeypatch, caplog):
     from mixassist.llm.ollama_provider import OllamaProvider
 
-    def post(url, json=None, timeout=None):
+    def handler(request):
         raise httpx.ConnectError("refused")
 
-    monkeypatch.setattr(httpx, "post", post)
+    provider = OllamaProvider("m", host="http://x", backoff=(0,))
+    provider._client = httpx.Client(transport=httpx.MockTransport(handler))
     with caplog.at_level(logging.INFO, logger="mixassist"), pytest.raises(LLMError):
-        OllamaProvider("m", host="http://x", backoff=(0,)).chat([], None)
+        provider.chat([], None)
     assert _lines(caplog) == ["ollama m: ConnectError on attempt 1/2; retrying in 0 s",
                               "ollama m: giving up after 2 attempts: ConnectError"]
