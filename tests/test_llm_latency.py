@@ -103,6 +103,18 @@ def test_genai_minimal_thinking_and_output_cap(monkeypatch):
     assert len(sent) == 3 and sent[2].thinking_config is None
 
 
+def test_minimal_thinking_defaults_to_aistudio_only(monkeypatch):
+    from mixassist.llm.genai_provider import GenAIProvider
+
+    monkeypatch.delenv("SOUNDPILOT_THINKING", raising=False)
+    assert GenAIProvider("aistudio", "gemma-test", api_key="k").minimal_thinking is True
+    assert GenAIProvider("vertex", "gemma-test", project="p").minimal_thinking is False
+    monkeypatch.setenv("SOUNDPILOT_THINKING", "minimal")
+    assert GenAIProvider("vertex", "gemma-test", project="p").minimal_thinking is True
+    monkeypatch.setenv("SOUNDPILOT_THINKING", "default")
+    assert GenAIProvider("aistudio", "gemma-test", api_key="k").minimal_thinking is False
+
+
 def test_ollama_honors_retry_after_and_disables_thinking(monkeypatch):
     from mixassist.llm import ollama_provider
 

@@ -60,8 +60,9 @@ class GenAIProvider(LLMProvider):
         self.model = model
         self.backoff = backoff
         self.max_wait_s = max_wait_s  # give up (RateLimitedError) instead of waiting longer than this in total
-        # Gemma 4 on AI Studio thinks before answering unless asked not to; "default" keeps the model's choice.
-        self.minimal_thinking = (os.environ.get("SOUNDPILOT_THINKING") or "minimal").lower() != "default"
+        # Gemma 4 on AI Studio thinks 50-450 tokens per call unless asked not to; Vertex MaaS reports no thinking.
+        thinking = (os.environ.get("SOUNDPILOT_THINKING") or ("minimal" if kind == "aistudio" else "default")).lower()
+        self.minimal_thinking = thinking == "minimal"
         if kind == "vertex":
             self.project = project or os.environ.get("GOOGLE_CLOUD_PROJECT") or gcloud_project()
             self.location = location or os.environ.get("GOOGLE_CLOUD_LOCATION") or "global"
