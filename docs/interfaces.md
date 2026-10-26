@@ -64,7 +64,9 @@ Codec (`mixassist/fl/protocol.py`, Core): `encode(msg_id: int, op: str, args: di
 FakeFL(tracks: list[dict], eq_curves=None, vol_curve=None, peak_script: dict[int, list[tuple[float, float]]] | None = None,
        bpm: float = 120.0, ppq: int = 96, loop_mode: int = 1, channels: list[str] | None = None,
        api: int = 36, clock: Callable[[], float] = time.monotonic, pattern_beats: float = 16.0, port: int = 0,
-       tempo_x1000: bool = False)   # tempo_x1000: transport reports bpm × 1000, like raw getCurrentTempo() on real FL
+       tempo_x1000: bool = False,   # tempo_x1000: transport reports bpm × 1000, like raw getCurrentTempo() on real FL
+       transport_unsafe: int = 0,   # next N transport changes reply err "... Operation unsafe at current time" (outdated script)
+       transport_defer_ops: int | None = None)  # changes apply N ops later, replies carry `queued` (script waiting for OnIdle)
 fake.handle(frame: bytes) -> bytes | None
 fake.note(status: int, d1: int, d2: int, t: float) -> None
 fake.recorded_notes   # list of dicts {pitch, velocity, tick, t} recorded while recording and playing (note-ons)
@@ -82,6 +84,7 @@ All §3.4 quirks are mandatory (pickup ignore > 0.05 when pickupMode != 0, delay
 - `fx` reply: for each loaded slot K, `sK=b1` and `nK=s<name>`.
 - `set` / `eq_set` accept an optional `pk` (pickup mode, default 0). The device script always passes 0 to FL; the fake uses it to emulate the pickup quirk.
 - `transport cmd=pos` without `pos_ticks` is a pure read; with `pos_ticks` it sets the position. `play` with `pos_ticks` sets the position, then starts.
+- `transport` replies may add `queued` (int: changes the device script queued for OnIdle because FL called them unsafe in OnSysEx) and `qerr` (str: why a queued change was dropped). Callers change the transport through `mixassist/fl/playback.py` (Core): `transport(fl, cmd, pos_ticks=None)` retries once on an "unsafe" err and then raises `FL_ERROR` with a hint; `wait_transport(fl, timeout_s, playing=..., recording=...)` polls `transport pos` until the readback matches; `describe(reply)` formats the readback plus `queued` / `qerr` for messages.
 - `FLClient` also has `sync()` (one `hello` round trip so pending writes land; read back at least one op after it) and `sleep(seconds)` (advances a `VirtualClock` on the fake, real sleep otherwise). Use `fl.now()` / `fl.sleep()` in schedulers so tests can run on a virtual clock. `FakeFL(clock=VirtualClock())` is available in `mixassist/fl/fake.py`.
 - `FakeFL.true_ticks(t)` is the real song position at time t (no 5 ms reporting lag); recorded notes use it. `fake.selected_channel` is set by `select`.
 

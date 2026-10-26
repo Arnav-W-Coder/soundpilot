@@ -1,10 +1,10 @@
 # Real-FL probe checklist (spec §5 P1–P8, §8.3, §8.4)
 
-**Status: no probe on this page has been run on real FL Studio.** One real-FL observation is recorded under P1 (tempo units). Every result row says "not run" until a person runs the step on the target machine and fills it in. Don't copy expected values into the results columns.
+**Status: no probe on this page has been run on real FL Studio.** Two real-FL observations are recorded: under P1 (tempo units) and P8 (transport refused inside OnSysEx). Every result row says "not run" until a person runs the step on the target machine and fills it in. Don't copy expected values into the results columns.
 
 Everything the backend assumes about real FL that isn't in the API stubs is marked PROBE in the code. These checks confirm or replace those assumptions:
 
-- `fl_script/MixAssist/device_MixAssist.py`: frame cap `MAX_FRAME` (P2), `getCurrentTempo()` ×1000 units (P1, observed on real FL), undo order (§8.3)
+- `fl_script/MixAssist/device_MixAssist.py`: frame cap `MAX_FRAME` (P2), `getCurrentTempo()` ×1000 units (P1, observed on real FL), undo order (§8.3), transport changes queued for OnIdle when FL refuses them in OnSysEx (P8, observed on real FL)
 - `mixassist/fl/curves.py`: volume and EQ tables (P3, P4)
 - `mixassist/tools/fl_tools.py`: readback delay (P5)
 
@@ -204,6 +204,14 @@ Record: notes heard (focused and unfocused), notes recorded (focused and unfocus
 
 - **Pass:** recorded; the unfocused behaviour is noted.
 - **Fallback:** require FL to be focused, with a warning in F8.
+
+**Observed Oct 25 2026, FL API 45: transport call from OnSysEx raised 'Operation unsafe at current time'.** This is a real-FL observation (macOS, IAC bridge, the device script as of `cc2ed5a`), not a P8 run. Approving an `fl_play_midi` record proposal logged `tool fl_play_midi -> {"code":"FL_ERROR","message":"FL rejected 'transport': transport failed: RuntimeError: Operation unsafe at current time"} (17 ms)`. Live (non-record) playback worked. The first op of a take is `transport cmd=rec_on`, and the only state-changing call it makes is `transport.record()` (`isRecording()` is a getter, and `pos` reads worked all along). So `transport.record()` is the refused call. Whether `transport.start()`, `stop()` and `setSongPos()` are refused too wasn't observed, because the take stopped at the first error (PROBE).
+
+Sources: the API stubs say a script's permissions come from the event's `pmeFlags`, and an unsafe call raises `"Operation unsafe at current time"` [ST:fl_classes pmeFlags]. `PME_System` means "safe to perform common system operations, such as starting/stopping transport" [ST:midi/__pme_flags.py]. The FL manual says to call `globalTransport` from an event callback and pass `eventData.pmeflags` (MIDI scripting page, Transport module). Image-Line's bundled MackieCU and SSL scripts only send FPT_Play/Stop/Record when `event.pmeFlags & PME_System` is set. PostFader on FL 2026 runs every command, `transport.record()`/`start()`/`stop()` included, from OnIdle; its OnSysEx only buffers bytes (`device_UniversalBridge.py`). Image-Line forum threads show the same error from `channels.muteChannel` in the interpreter and from OnIdle/OnRefresh while a modal window is open (forum t=309492, t=325032). Which flags FL sets on an IAC SysEx event is unknown (PROBE).
+
+Fix (device script): a transport change FL refuses in OnSysEx, or any change on an event without `PME_System`, is queued in order and run from OnIdle. The reply adds `queued` while changes wait, and `qerr` if FL kept refusing for about 5 s (250 idle ticks) and the change was dropped. The server (`mixassist/fl/playback.py`) retries an "unsafe" err once, then fails with a hint. F8 then waits up to 1 s for a readback of `recording=True, playing=True` before sending any note, and otherwise aborts with CC123, stop and rec_off. `globalTransport(FPT_Record, 1, PME_System, GT_Global)` with a forged `PME_System` (what Novation's bundled script does) was not used: it would bypass FL's own safety check (PROBE whether FL honours it from OnSysEx).
+
+To check the fix on real FL: re-copy the script, reload it, then run `--probe p8 --channel 0`. It now prints `transport readback after rec_on + play: recording=..., playing=...`. If that says `queued`, FL didn't run OnIdle. If FL shows a recording-options dialog when Record is armed, note it here.
 
 ## §8.3 Real-FL read-back checks (run after P1–P5 and P8)
 

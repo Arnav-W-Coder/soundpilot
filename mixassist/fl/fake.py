@@ -13,6 +13,12 @@ Quirks reproduced on purpose (code that relies on their absence must fail tests)
   in pattern mode (loop_mode 0) the position wraps at the pattern length.
 - ``tempo_x1000=True`` reports ``bpm`` as BPM * 1000, the raw ``mixer.getCurrentTempo()`` value
   that real FL returns (FL API 45) and that device scripts older than the fix pass through.
+- ``transport_unsafe=N`` makes the next N transport changes (anything but a pure ``pos`` read) reply
+  ``err`` "transport failed: RuntimeError: Operation unsafe at current time", what real FL API 45 did
+  for ``transport.record()`` inside OnSysEx with device scripts that called it directly.
+- ``transport_defer_ops=N`` models the current device script queueing transport changes for OnIdle:
+  a change applies only after N more ops, and replies carry ``queued`` (pending count) meanwhile.
+  A huge N models a build where OnIdle never fires.
 """
 from __future__ import annotations
 
@@ -72,6 +78,8 @@ class FakeFL:
         pattern_beats: float = 16.0,
         port: int = 0,
         tempo_x1000: bool = False,
+        transport_unsafe: int = 0,
+        transport_defer_ops: int | None = None,
     ):
         self.vol_curve = vol_curve or curves.VOLUME_TABLE
         eq_curves = eq_curves or {}
@@ -87,6 +95,8 @@ class FakeFL:
         self.pattern_beats = float(pattern_beats)
         self.port = int(port)
         self.tempo_x1000 = bool(tempo_x1000)
+        self.transport_unsafe = int(transport_unsafe)
+        self.transport_defer_ops = transport_defer_ops
 
         self.tracks = [self._make_track(t, i) for i, t in enumerate(tracks)]
         self.tracks.append(self._make_track({"name": "Current"}, len(self.tracks)))  # "current" track, excluded in v1
@@ -101,6 +111,7 @@ class FakeFL:
         self.sounding_notes: set[tuple[int, int]] = set()
         self.ops: list[str] = []
         self._pending: list[Callable[[], None]] = []
+        self._transport_queue: list[list] = []  # [ops_left, cmd, pos_ticks]
 
     # ------------------------------------------------------------------ setup
     def _make_track(self, spec: dict, index: int) -> dict:
@@ -195,6 +206,7 @@ class FakeFL:
         except ValueError:
             return None  # FL drops malformed SysEx
         committed, self._pending = self._pending, []
+        self._run_transport_queue()
         self.ops.append(op)
         try:
             handler = getattr(self, f"_op_{op}", None)
@@ -301,9 +313,40 @@ class FakeFL:
             out[f"p{i}"] = float(self.peak_at(i, since_play))
         return out
 
+    def _run_transport_queue(self) -> None:
+        """OnIdle between ops: apply queued transport changes that are due, in order."""
+        for item in self._transport_queue:
+            item[0] -= 1
+        while self._transport_queue and self._transport_queue[0][0] <= 0:
+            _, cmd, pos = self._transport_queue.pop(0)
+            self._apply_transport(cmd, pos)
+
     def _op_transport(self, args: dict) -> dict:
         cmd = args.get("cmd")
         pos = args.get("pos_ticks")
+        if cmd not in ("play", "stop", "rec_on", "rec_off", "pos"):
+            raise FakeError(f"unknown transport cmd {cmd!r}")
+        changes = cmd != "pos" or pos is not None
+        if changes and self.transport_unsafe > 0:
+            self.transport_unsafe -= 1
+            raise FakeError("transport failed: RuntimeError: Operation unsafe at current time")
+        if changes and (self.transport_defer_ops is not None or self._transport_queue):
+            self._transport_queue.append([int(self.transport_defer_ops or 0), cmd, pos])
+        elif changes:
+            self._apply_transport(cmd, pos)
+        out = {
+            "playing": self.playing,
+            "recording": self.recording,
+            "pos_ticks": int(round(self.reported_ticks())),
+            "loop_mode": self.loop_mode,
+            "bpm": self.bpm * 1000.0 if self.tempo_x1000 else self.bpm,
+            "ppq": self.ppq,
+        }
+        if self._transport_queue:
+            out["queued"] = len(self._transport_queue)
+        return out
+
+    def _apply_transport(self, cmd: str, pos) -> None:
         now = self.clock()
         if cmd == "play":
             if pos is not None:
@@ -322,16 +365,6 @@ class FakeFL:
             if pos is not None:
                 self.start_ticks = float(pos)
                 self.t_start = now
-        else:
-            raise FakeError(f"unknown transport cmd {cmd!r}")
-        return {
-            "playing": self.playing,
-            "recording": self.recording,
-            "pos_ticks": int(round(self.reported_ticks())),
-            "loop_mode": self.loop_mode,
-            "bpm": self.bpm * 1000.0 if self.tempo_x1000 else self.bpm,
-            "ppq": self.ppq,
-        }
 
     def _op_channels(self, args: dict) -> dict:
         start, count = int(args.get("start", 0)), int(args.get("count", 16))

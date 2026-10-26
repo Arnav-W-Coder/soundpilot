@@ -31,6 +31,20 @@ def test_clip_burst_detected():
     assert not fake.playing  # transport stopped afterwards
 
 
+def test_play_queued_for_onidle_still_watches():
+    clock = VirtualClock()
+    fake, _ = install_fake(tracks=demo_tracks(), peak_script=CLIP_SCRIPT, clock=clock, transport_defer_ops=1)
+    out = call_tool("fl_watch_peaks", {"seconds": 10.0})
+    assert 1 in out["clipping"] and not any("did not start playing" in w for w in out["warnings"])
+
+
+def test_warns_when_fl_never_starts_playing():
+    clock = VirtualClock()
+    install_fake(tracks=demo_tracks(), peak_script=CLIP_SCRIPT, clock=clock, transport_defer_ops=10**9)
+    out = call_tool("fl_watch_peaks", {"seconds": 2.0})
+    assert any("did not start playing" in w and "still queued" in w for w in out["warnings"])
+
+
 def test_half_scale_not_flagged():
     _, out = _watch(CLIP_SCRIPT)
     snare = next(t for t in out["tracks"] if t["index"] == 2)

@@ -66,12 +66,13 @@ eq_get	track	gB, gdB, fB, fhB, wB for B in 0..2	mixer.getEqBandCount/getEqGain(i
 set	track, optional v, p, s (norm/−1…1)	ok	mixer.setTrackVolume(i,v,0), setTrackPan(i,p,0), setTrackStereoSep(i,s,0) [ST:mixer/__tracks.py]; general.saveUndo("MixAssist",0) [ST:general/__undo.py]
 eq_set	track, band, optional g, f, w (norm)	ok	mixer.setEqGain/setEqFrequency/setEqBandwidth [ST:mixer/__eq.py]
 peaks	start, count (≤32)	pK = max(L,R) linear (1.0 = 0 dBFS)	mixer.getTrackPeaks(i,2) [ST:mixer/__tracks.py]
-transport	cmd ∈ play, stop, rec_on, rec_off, pos; optional pos_ticks	playing, recording, pos_ticks, loop_mode, bpm, ppq	transport.start/stop/record/isPlaying/isRecording/setSongPos(t,2)/getSongPos(2)/getLoopMode [ST:transport/init.py]; mixer.getCurrentTempo() [ST:mixer/__properties.py] (returns BPM × 1000 on FL API 45; the script reports true BPM); general.getRecPPQ()
+transport	cmd ∈ play, stop, rec_on, rec_off, pos; optional pos_ticks	playing, recording, pos_ticks, loop_mode, bpm, ppq; optional queued (changes waiting for OnIdle), qerr (why a queued change was dropped)	transport.start/stop/record/isPlaying/isRecording/setSongPos(t,2)/getSongPos(2)/getLoopMode [ST:transport/init.py]; mixer.getCurrentTempo() [ST:mixer/__properties.py] (returns BPM × 1000 on FL API 45; the script reports true BPM); general.getRecPPQ(). Changes FL refuses in OnSysEx ("Operation unsafe at current time", observed for transport.record() on FL API 45), or any change when the event lacks PME_System [ST:midi/__pme_flags.py], are queued in order and run from OnIdle; the reply's state is read before they run.
 channels	start, count (≤16)	total, nK	channels.channelCount(True), getChannelName(i,True)
 select	channel	ok	channels.selectOneChannel(i,True) [ST:channels/__properties.py]; ui.showWindow(3) (widPianoRoll) [ST:ui/__windows.py]
 The device script handles SysEx only in OnSysEx and sets msg.handled = True [ST:callbacks/init.py], [ST:fl_classes].
 Note and CC messages are left unhandled, so FL plays and records them on the selected channel [ST-DOC].
-No threads, sockets, files or OnIdle [BY], [PF]. The file is ASCII-only [PF].
+No threads, sockets or files [BY], [PF]. The file is ASCII-only [PF].
+OnIdle only runs queued transport changes (see the transport row). PostFader runs all its commands from OnIdle on FL 2026 [PF], but OnIdle may not fire on some FL 2025 builds [BY], so the server confirms every transport change by a later transport pos readback and never trusts the reply to the change itself.
 3.4 Fake FL backend (fl/fake.py), used by every test
 class FakeFL: handle(frame: bytes) -> bytes | None implements the same op table. note(status, d1, d2, t) records notes when recording and playing.
 FakeFL(tracks: list[dict], eq_curves=..., vol_curve=..., peak_script={track: [(t_s, linear)]}).
@@ -83,9 +84,11 @@ Volume curve: a monotonic table with 0.8 → 0.0 dB [ST:mixer/__tracks.py, "defa
 Peaks are instantaneous and sampled at poll time from peak_script. Peaks between polls are invisible.
 Transport clock: pos_ticks = start + (now − t_start) · ppq · bpm/60 + 5 ms lag. In pattern mode, the position wraps at the pattern length.
 Optional tempo_x1000=True: the transport reply's bpm is BPM × 1000, the raw getCurrentTempo() value on real FL. FLClient divides any bpm above 1000 by 1000.
+Optional transport_unsafe=N: the next N transport changes reply err "transport failed: RuntimeError: Operation unsafe at current time" (an outdated script on real FL). Optional transport_defer_ops=N: changes apply only after N more ops and replies carry queued (the current script waiting for OnIdle); a huge N means OnIdle never fires.
 4. Decision records
 ADR-1 Transport: SysEx over two loopMIDI or IAC ports, handled event-driven in OnSysEx.
 Why: FL 2025 controller scripts can't use sockets or threads, and OnIdle may not fire [BY]. PostFader ships SysEx in production [PF].
+Exception: FL refused transport.record() inside OnSysEx on FL API 45 ("Operation unsafe at current time"), so refused transport changes are queued for OnIdle (§3.3 transport row).
 Two ports avoid loopback feedback.
 Rejected: TCP, file-RPC, Flapi (unmaintained), the FL 2026 built-in MCP (reverse-engineered).
 ADR-2 Piano roll write path: the server generates MCP_Apply.pyscript with notes baked in, in …/Settings/Piano roll scripts.
@@ -225,7 +228,8 @@ Method:
 select (if channel), then transport to read bpm and ppq. Beats are converted to seconds at FL's tempo. A bpm outside 10..999 is FL_ERROR before any note is sent: an un-normalized getCurrentTempo() value (BPM×1000) would make every note ~1000× too short to sound. Notes shorter than 10 ms at FL's tempo add a warning.
 Live: send note on/off messages on the "MA to FL" port at their times.
 Record:
-transport rec_on, pos_ticks=(start_bar−2)·4·ppq, play.
+transport rec_on, pos_ticks=(start_bar−2)·4·ppq, play. A transport err that says "unsafe" is retried once after 0.1 s, then FL_ERROR with a hint (update the script, focus FL, close dialogs, or arm Record by hand).
+Poll transport pos until it reads recording and playing (≤ 1 s). Otherwise FL_ERROR before any note: CC123, stop and rec_off are still sent, and the message includes queued / qerr.
 During the one-bar pre-roll, run 6 pos polls and fit ticks = a + rate·t using the round-trip midpoint, taking the median of a.
 Send each note when FL reaches its tick, then send note-off for every sounding note plus CC123, and stop plus rec_off.
 Live note routing to the selected channel: [ST-DOC]. Precise sleep: sleep until 2 ms before the target, then spin.

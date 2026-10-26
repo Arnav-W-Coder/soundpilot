@@ -205,6 +205,83 @@ def test_live_mode_sends_on_off_and_releases():
     assert out["channel"]["index"] is None
 
 
+def test_record_waits_for_transport_queued_until_onidle():
+    """Current device script on real FL: rec_on/pos/play are queued in OnSysEx and run by OnIdle."""
+    fl, fake = client(clock=VirtualClock(), transport_defer_ops=2)
+    notes = [PlayNote(60 + i % 12, i * 0.25, 0.2) for i in range(16)]
+    out = play(fl, notes, record=True)
+    ticks = np.array([r["tick"] for r in fake.recorded_notes])
+    err_ms = (ticks - target_ticks(notes, 2)) / (PPQ * BPM / 60) * 1000
+    assert len(ticks) == 16 and np.all(np.abs(err_ms) <= 10.0)
+    assert not fake.playing and not fake.recording and fake.sounding_notes == set()
+    assert not any("still reports" in w for w in out["warnings"])
+
+
+def test_record_aborts_when_fl_never_runs_queued_transport():
+    """OnIdle never fires (some FL 2025 builds): no note may be sent into a take that isn't recording."""
+    fl, fake = client(clock=VirtualClock(), transport_defer_ops=10**9)
+    events = _note_spy(fake)
+    with pytest.raises(ToolError) as e:
+        play(fl, [PlayNote(60, 0, 1)], record=True)
+    assert e.value.code == "FL_ERROR"
+    assert "did not start recording" in e.value.message and "recording=False, playing=False" in e.value.message
+    assert "still queued" in e.value.message and "no notes were sent" in e.value.message
+    assert "Record button" in e.value.hint and "focus" in e.value.hint
+    assert [s for s, _, _ in events] == [0xB0]  # only the all-notes-off
+    assert fake.recorded_notes == [] and fake.sounding_notes == set()
+
+
+def test_record_aborts_when_transport_reads_back_not_recording():
+    fl, fake = client(clock=VirtualClock())
+    real = fake._apply_transport
+    fake._apply_transport = lambda cmd, pos: None if cmd == "rec_on" else real(cmd, pos)  # FL ignored record
+    with pytest.raises(ToolError) as e:
+        play(fl, [PlayNote(60, 0, 1)], record=True)
+    assert "recording=False, playing=True" in e.value.message
+    assert fake.recorded_notes == [] and not fake.playing
+
+
+def test_unsafe_transport_reply_is_retried_once():
+    """An outdated installed script replies err 'Operation unsafe'; one retry may get through."""
+    fl, fake = client(clock=VirtualClock(), transport_unsafe=1)
+    out = play(fl, [PlayNote(60, 0, 1)], record=True)
+    assert out["notes_sent"] == 1 and len(fake.recorded_notes) == 1
+    assert not fake.playing and not fake.recording
+
+
+def test_unsafe_transport_twice_gives_fl_error_with_hint():
+    fl, fake = client(clock=VirtualClock(), transport_unsafe=10**6)
+    events = _note_spy(fake)
+    with pytest.raises(ToolError) as e:
+        play(fl, [PlayNote(60, 0, 1)], record=True)
+    assert e.value.code == "FL_ERROR"
+    assert "Operation unsafe at current time" in e.value.message and "after one retry" in e.value.message
+    assert "device_MixAssist.py" in e.value.hint and "Record button" in e.value.hint
+    assert [s for s, _, _ in events] == [0xB0] and fake.recorded_notes == []
+
+
+def test_tool_reports_unsafe_transport_with_hint(active_fake):
+    from mixassist.tools import call_tool
+
+    active_fake.transport_unsafe = 10**6
+    res = call_tool("fl_play_midi", {"notes": [{"pitch": 64, "start_beat": 0, "length_beats": 0.5}], "record": True})
+    assert res["error"]["code"] == "FL_ERROR" and "unsafe" in res["error"]["message"]
+    assert "Record button" in res["error"]["hint"]
+
+
+def test_live_play_needs_no_transport_change():
+    fl, fake = client(clock=VirtualClock(), transport_unsafe=10**6)
+    assert play(fl, [PlayNote(60, 0, 1)])["notes_sent"] == 1
+
+
+def test_warns_when_fl_keeps_playing_after_the_take():
+    fl, fake = client(clock=VirtualClock())
+    real = fake._apply_transport
+    fake._apply_transport = lambda cmd, pos: None if cmd == "stop" else real(cmd, pos)
+    out = play(fl, [PlayNote(60, 0, 1)], record=True)
+    assert any("still reports recording=False, playing=True" in w for w in out["warnings"])
+
+
 def test_overlapping_same_pitch_does_not_leave_notes_on():
     fl, fake = client(clock=VirtualClock())
     play(fl, [PlayNote(60, 0, 1.0), PlayNote(60, 0.5, 1.0), PlayNote(62, 0.25, 4.0)], record=True)

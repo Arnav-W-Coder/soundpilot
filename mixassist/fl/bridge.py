@@ -20,6 +20,7 @@ import threading
 import time
 
 from mixassist.errors import ToolError
+from mixassist.fl.playback import describe, transport as transport_cmd, wait_transport
 
 MA_PREFIX = bytes([0xF0, 0x7D, 0x4D, 0x41])
 DEFAULT_TO_PORT = "MA to FL"
@@ -319,7 +320,7 @@ def probe_readback(fl, track: int, out=print) -> dict:
 
 def probe_peaks(fl, seconds: float = 5.0, tracks: int = 32, out=print) -> dict:
     """P6: start playback, poll peaks for `tracks` tracks as fast as possible, stop."""
-    fl.request("transport", {"cmd": "play"})
+    transport_cmd(fl, "play")
     maxima: dict[str, float] = {}
     polls = 0
     t0 = time.perf_counter()
@@ -331,7 +332,7 @@ def probe_peaks(fl, seconds: float = 5.0, tracks: int = 32, out=print) -> dict:
                 if v is not None:
                     maxima[k] = max(maxima.get(k, 0.0), float(v))
     finally:
-        fl.request("transport", {"cmd": "stop"})
+        transport_cmd(fl, "stop")
     elapsed = time.perf_counter() - t0
     rate = polls / elapsed if elapsed else 0.0
     active = {k: round(v, 4) for k, v in maxima.items() if v > 0}
@@ -348,8 +349,12 @@ def probe_notes(fl, transport: BridgeTransport, channel: int, record: bool = Tru
     bpm = float(tr.get("bpm") or 120.0)
     eighth = 30.0 / bpm
     if record:
-        fl.request("transport", {"cmd": "rec_on"})
-    fl.request("transport", {"cmd": "play", "pos_ticks": 0})
+        transport_cmd(fl, "rec_on")
+    transport_cmd(fl, "play", pos_ticks=0)
+    want = {"playing": True, "recording": True} if record else {"playing": True}
+    started, state = wait_transport(fl, 1.0, **want)
+    out(f"transport readback after {'rec_on + ' if record else ''}play: {describe(state)}"
+        + ("" if started else " (NOT confirmed within 1 s)"))
     sent = []
     try:
         time.sleep(4 * 60.0 / bpm)  # one bar of 4/4 pre-roll
@@ -361,9 +366,11 @@ def probe_notes(fl, transport: BridgeTransport, channel: int, record: bool = Tru
             time.sleep(eighth * 0.1)
     finally:
         transport.send_short(0xB0, 123, 0)
-        fl.request("transport", {"cmd": "stop"})
+        transport_cmd(fl, "stop")
         if record:
-            fl.request("transport", {"cmd": "rec_off"})
+            transport_cmd(fl, "rec_off")
+    stopped, state = wait_transport(fl, 1.0, playing=False, recording=False)
+    out(f"transport readback after stop: {describe(state)}" + ("" if stopped else " (NOT confirmed within 1 s)"))
     out(f"sent {len(sent)} notes at {bpm} BPM on channel {channel} (record={record})")
     out("P8: check the channel's piano roll for 8 notes starting at bar 2; repeat with FL unfocused")
     return {"bpm": bpm, "notes": sent}

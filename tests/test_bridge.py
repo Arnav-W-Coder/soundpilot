@@ -279,11 +279,13 @@ def test_context_manager(rt):
 # ------------------------------------- end to end through the device script
 
 def _fl_responder(sim, dev):
-    """Model FL: SysEx goes to OnSysEx (replies via device.midiOutSysex); notes are recorded."""
+    """Model FL: SysEx goes to OnSysEx (replies via device.midiOutSysex); notes are recorded.
+    OnIdle runs once before each SysEx, as FL calls it every ~20 ms between messages."""
     notes = []
 
     def respond(message):
         if message[0] == 0xF0:
+            dev.OnIdle()
             before = len(sim.sysex_out)
             dev.OnSysEx(sim_mod.FakeMsg(bytes(message)))
             return [list(f) for f in sim.sysex_out[before:]]
@@ -371,6 +373,33 @@ def test_probe_notes_records_scale(loop, monkeypatch):
     assert sim.selected == 1 and sim.window == 3
     assert sim.playing is False and sim.recording is False
     assert len(sim.calls_named("transport.record")) == 2
+
+
+def test_probe_notes_when_fl_refuses_transport_in_onsysex(loop, monkeypatch):
+    fl, sim, t, notes = loop
+    sim.unsafe_calls = set(sim_mod.TRANSPORT_SETTERS)
+    monkeypatch.setattr(bridge.time, "sleep", lambda s: None)
+    lines = []
+    bridge.probe_notes(fl, t, channel=1, out=lines.append)
+    assert lines[0] == "transport readback after rec_on + play: recording=True, playing=True"
+    assert lines[1] == "transport readback after stop: recording=False, playing=False"
+    assert len(sim.calls_named("transport.record")) == 2 and sim.calls_named("transport.start")
+
+
+def test_f8_record_over_bridge_when_fl_refuses_transport_in_onsysex(loop):
+    """The real-FL failure: fl_play_midi record=true with transport.record() unsafe inside OnSysEx."""
+    from mixassist.midi.scheduler import PlayNote, play
+
+    fl, sim, t, notes = loop
+    sim.unsafe_calls = set(sim_mod.TRANSPORT_SETTERS)
+    sim.bpm = 960.0  # keep the one-bar pre-roll short in real time
+    out = play(fl, [PlayNote(60, 0, 0.5), PlayNote(64, 1, 0.5)], record=True, start_bar=2)
+    assert out["mode"] == "record" and out["notes_sent"] == 2
+    assert [n[1] for n in notes if n[0] == 0x90] == [60, 64] and notes[-1] == (0xB0, 123, 0)
+    assert not sim.playing and not sim.recording
+    assert [c[0] for c in sim.calls if c[0] in sim_mod.TRANSPORT_SETTERS] == [
+        "transport.record", "transport.setSongPos", "transport.start", "transport.stop", "transport.record"]
+    assert not any("still reports" in w for w in out["warnings"])
 
 
 def test_core_tools_run_over_bridge_and_device_script(loop):

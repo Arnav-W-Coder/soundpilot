@@ -12,6 +12,7 @@ from typing import Callable
 import numpy as np
 
 from mixassist.errors import ToolError
+from mixassist.fl.playback import NOT_CONFIRMED_HINT, describe, transport, wait_transport
 
 NOTE_ON = 0x90
 NOTE_OFF = 0x80
@@ -25,6 +26,8 @@ SYNC_POLLS = 6
 SYNC_POLL_SPACING_S = 0.02
 TAIL_S = 0.05             # after the last note-off, before stop/rec_off
 MAX_TAKE_S = 600.0
+RECORD_CONFIRM_S = 1.0    # rec_on + play must read back as recording and playing within this
+STOP_CONFIRM_S = 0.5
 MIN_BPM, MAX_BPM = 10.0, 999.0
 # A raw getCurrentTempo() value (BPM x 1000) shrinks every note ~1000x: the channel LED blinks but
 # most instruments make no sound. Notes this short are flagged in `warnings`.
@@ -193,10 +196,16 @@ def play(fl, notes: list[PlayNote], channel: int | None = None, record: bool = F
     first_tick = preroll_tick + 4 * ppq
     started = False
     try:
-        fl.request("transport", {"cmd": "rec_on"})
-        fl.request("transport", {"cmd": "pos", "pos_ticks": preroll_tick})
-        fl.request("transport", {"cmd": "play"})
+        transport(fl, "rec_on")
+        transport(fl, "pos", pos_ticks=preroll_tick)
         started = True
+        transport(fl, "play")
+        recording, state = wait_transport(fl, RECORD_CONFIRM_S, playing=True, recording=True)
+        if not recording:
+            raise ToolError(
+                "FL_ERROR",
+                f"FL did not start recording within {RECORD_CONFIRM_S:g} s ({describe(state)}); no notes were sent",
+                hint=NOT_CONFIRMED_HINT)
         a = fit_transport_clock(fl, rate)
         timed = [((first_tick + beat * ppq - a) / rate, o, p, v) for beat, o, p, v in events]
         if timed[0][0] < fl.now():
@@ -205,12 +214,28 @@ def play(fl, notes: list[PlayNote], channel: int | None = None, record: bool = F
         _wait_until(fl, fl.now() + TAIL_S)
     finally:
         take.release_all()
-        if started:
-            fl.request("transport", {"cmd": "stop"})
-        fl.request("transport", {"cmd": "rec_off"})
+        cleanup_errors = _stop_recording(fl, started)
+    if cleanup_errors:
+        warnings.append("Could not stop FL after the take: " + "; ".join(cleanup_errors)
+                        + ". Press Stop and turn Record off in FL.")
+    else:
+        stopped, state = wait_transport(fl, STOP_CONFIRM_S, playing=False, recording=False)
+        if not stopped:
+            warnings.append(f"FL still reports {describe(state)} after the take; press Stop and turn Record off in FL.")
     out = _result("record", bpm, ppq, take, chan, warnings, end_beat * s_per_beat)
     out["start_bar"] = start_bar
     return out
+
+
+def _stop_recording(fl, started: bool) -> list[str]:
+    """Best-effort stop and rec_off; never raises, so an earlier error is not masked."""
+    errors = []
+    for cmd in (["stop"] if started else []) + ["rec_off"]:
+        try:
+            transport(fl, cmd)
+        except ToolError as exc:
+            errors.append(f"{cmd}: {exc.message}")
+    return errors
 
 
 def _result(mode: str, bpm: float, ppq: int, take: _Take, chan: dict, warnings: list[str], duration_s: float) -> dict:

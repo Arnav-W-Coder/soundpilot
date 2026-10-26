@@ -102,6 +102,24 @@ def test_tempo_x1000_mimics_raw_get_current_tempo():
     assert fake.true_ticks() == pytest.approx(96 * 130 / 60)  # the clock itself runs at the true tempo
 
 
+def test_transport_unsafe_replies_err_then_recovers():
+    fake, client = install_fake(clock=VirtualClock(), transport_unsafe=1)
+    assert client.request("transport", {"cmd": "pos"})["recording"] is False  # pure reads are never refused
+    with pytest.raises(ToolError) as e:
+        client.request("transport", {"cmd": "rec_on"})
+    assert e.value.message == "FL rejected 'transport': transport failed: RuntimeError: Operation unsafe at current time"
+    assert client.request("transport", {"cmd": "rec_on"})["recording"] is True
+
+
+def test_transport_defer_ops_models_onidle_queue():
+    fake, client = install_fake(clock=VirtualClock(), transport_defer_ops=1)
+    r = client.request("transport", {"cmd": "rec_on"})
+    assert r["recording"] is False and r["queued"] == 1
+    assert client.request("transport", {"cmd": "play", "pos_ticks": 96})["queued"] == 1  # rec_on ran first
+    r = client.request("transport", {"cmd": "pos"})
+    assert r["recording"] and r["playing"] and r["pos_ticks"] == 96 and "queued" not in r
+
+
 def test_notes_record_only_when_recording_and_playing():
     clock = VirtualClock()
     fake, client = install_fake(clock=clock)

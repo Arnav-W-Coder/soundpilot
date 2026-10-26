@@ -10,9 +10,14 @@
 # handled. Notes and CC are left unhandled so FL plays and records them on the
 # selected channel [ST-DOC].
 #
-# Constraints: ASCII only, no threads, sockets, files or OnIdle [BY] [PF].
-# Everything is event-driven from OnSysEx. Values stay normalized here; the
-# server converts to dB / Hz / percent.
+# Constraints: ASCII only, no threads, sockets or files [BY] [PF]. Requests
+# are handled in OnSysEx. The one exception is transport changes: FL API 45
+# raised "Operation unsafe at current time" for transport.record() inside
+# OnSysEx, so commands FL refuses there are queued and run from OnIdle, as
+# PostFader runs all its commands [PF]. OnIdle may not fire on some FL 2025
+# builds [BY]; the reply reports "queued" and the server confirms the state
+# by readback. Values stay normalized here; the server converts to dB / Hz /
+# percent.
 #
 # Install: copy this folder to
 #   <Documents>/Image-Line/FL Studio/Settings/Hardware/MixAssist/
@@ -52,6 +57,14 @@ EQ_MIN_API = 35
 # API 45, the REC_Tempo storage form [ST:midi/__rec_events]. FL tempos stay
 # far below 1000 BPM, so anything above this is the x1000 form.
 TEMPO_X1000_ABOVE = 1000.0
+# midi.PME_System: "safe to perform common system operations, such as
+# starting/stopping transport" [ST:midi/__pme_flags.py]. Image-Line's MackieCU
+# script only runs transport buttons when the event has it.
+PME_SYSTEM = 2
+# Queued transport commands. OnIdle runs about every 20 ms [PF], so a command
+# FL keeps refusing (e.g. a modal dialog is open) is dropped after about 5 s.
+MAX_QUEUED = 16
+IDLE_RETRIES = 250
 
 MAX_TRACKS_PER_OP = 8
 MAX_PEAKS_PER_OP = 32
@@ -351,29 +364,103 @@ def _transport_state():
     }
 
 
-def op_transport(args):
+# Transport actions FL refused inside OnSysEx, oldest first, run by OnIdle.
+_queue = []
+_queue_err = ""
+_idle_fails = 0
+
+
+def _apply(action):
+    # transport.start() toggles play/pause and transport.record() toggles
+    # recording [ST:transport/init.py], so check the state first.
+    kind = action[0]
+    if kind == "pos":
+        transport.setSongPos(action[1], SONGLENGTH_ABSTICKS)
+    elif kind == "play":
+        if not transport.isPlaying():
+            transport.start()
+    elif kind == "stop":
+        transport.stop()
+    elif kind == "rec_on":
+        if not transport.isRecording():
+            transport.record()
+    elif kind == "rec_off":
+        if transport.isRecording():
+            transport.record()
+
+
+def _is_unsafe(e):
+    # Stubs document TypeError, FL API 45 raised RuntimeError; match the text.
+    return "unsafe" in str(e).lower()
+
+
+def _enqueue(actions):
+    global _queue_err, _idle_fails
+    if len(_queue) + len(actions) > MAX_QUEUED:
+        raise OpError("transport queue full (%d commands waiting for FL's idle callback)" % len(_queue))
+    if not _queue:
+        _idle_fails = 0
+    _queue.extend(actions)
+    _queue_err = ""
+
+
+def _run_actions(actions, flags):
+    global _queue_err
+    if not actions:
+        return
+    _queue_err = ""
+    # Keep order: once anything is queued, later commands queue behind it.
+    if _queue or (flags is not None and not flags & PME_SYSTEM):
+        _enqueue(actions)
+        return
+    for i in range(len(actions)):
+        try:
+            _apply(actions[i])
+        except Exception as e:
+            if not _is_unsafe(e):
+                raise
+            _enqueue(actions[i:])
+            return
+
+
+def run_queued():
+    """Run queued transport actions; called from OnIdle."""
+    global _queue_err, _idle_fails
+    while _queue:
+        try:
+            _apply(_queue[0])
+        except Exception as e:
+            _idle_fails += 1
+            if _is_unsafe(e) and _idle_fails < IDLE_RETRIES:
+                return
+            _queue_err = ("%s: %s: %s" % (_queue[0][0], type(e).__name__, e))[:MAX_ERR_MSG]
+            del _queue[:]
+            _idle_fails = 0
+            print("MixAssist: dropped queued transport commands: " + _queue_err)
+            return
+        _queue.pop(0)
+        _idle_fails = 0
+
+
+def op_transport(args, flags=None):
     cmd = args.get("cmd")
     if cmd not in ("play", "stop", "rec_on", "rec_off", "pos"):
         raise OpError("cmd must be play, stop, rec_on, rec_off or pos")
+    actions = []
     if args.get("pos_ticks") is not None:
         ticks = _int_arg(args, "pos_ticks")
         if ticks < 0:
             raise OpError("pos_ticks must be >= 0")
-        transport.setSongPos(ticks, SONGLENGTH_ABSTICKS)
-    # transport.start() toggles play/pause and transport.record() toggles
-    # recording [ST:transport/init.py], so check the state first.
-    if cmd == "play":
-        if not transport.isPlaying():
-            transport.start()
-    elif cmd == "stop":
-        transport.stop()
-    elif cmd == "rec_on":
-        if not transport.isRecording():
-            transport.record()
-    elif cmd == "rec_off":
-        if transport.isRecording():
-            transport.record()
-    return _transport_state()
+        actions.append(("pos", ticks))
+    if cmd != "pos":
+        actions.append((cmd,))
+    _run_actions(actions, flags)
+    out = _transport_state()
+    if _queue:
+        out["queued"] = len(_queue)
+    if _queue_err:
+        out["qerr"] = _queue_err
+    return out
 
 
 def op_channels(args):
@@ -437,8 +524,11 @@ def _salvage_id(data):
     return None
 
 
-def handle_frame(data):
-    """Return the reply frame for a request frame, or None to stay silent."""
+def handle_frame(data, flags=None):
+    """Return the reply frame for a request frame, or None to stay silent.
+
+    flags is the event's pmeFlags (None when unknown).
+    """
     if not is_ours(data):
         return None
     if len(data) > MAX_FRAME:
@@ -463,6 +553,8 @@ def handle_frame(data):
     try:
         if handler is op_pad:
             out = handler(args, msg_id)
+        elif handler is op_transport:
+            out = handler(args, flags)
         else:
             out = handler(args)
         reply = encode(msg_id, "ok", out)
@@ -490,6 +582,15 @@ def OnDeInit():
     pass
 
 
+def OnIdle():
+    if not _queue:
+        return
+    try:
+        run_queued()
+    except Exception as e:
+        print("MixAssist: idle error: %s" % e)
+
+
 def OnSysEx(msg):
     if msg.sysex is None:
         return
@@ -497,6 +598,6 @@ def OnSysEx(msg):
     if not is_ours(data):
         return
     msg.handled = True
-    reply = handle_frame(data)
+    reply = handle_frame(data, getattr(msg, "pmeFlags", None))
     if reply is not None:
         device.midiOutSysex(reply)

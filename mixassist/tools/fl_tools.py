@@ -8,11 +8,13 @@ from mixassist.errors import ToolError
 from mixassist.fl import curves, get_fl
 from mixassist.fl.client import FLClient
 from mixassist.fl.fake import is_default_name
+from mixassist.fl.playback import describe, transport, wait_transport
 from mixassist.fl.tracks import resolve_track
 
 TRACK_BATCH = 8
 PEAK_BATCH = 32
 MIN_POLL_S = 0.05
+PLAY_CONFIRM_S = 1.0
 MAX_ROUND_TRIPS = 8
 VOLUME_AIM_DB = 0.1
 VOLUME_TOL_DB = 0.25
@@ -381,7 +383,11 @@ def fl_watch_peaks(args: dict) -> dict:
     ppq = int(status.get("ppq") or 96)
     warnings = []
     if start_playback:
-        fl.request("transport", {"cmd": "play", "pos_ticks": (from_bar - 1) * 4 * ppq})
+        transport(fl, "play", pos_ticks=(from_bar - 1) * 4 * ppq)
+        playing, state = wait_transport(fl, PLAY_CONFIRM_S, playing=True)
+        if not playing:
+            warnings.append(f"FL did not start playing within {PLAY_CONFIRM_S:g} s ({describe(state)}), so peaks "
+                            "may read 0; press Play in FL or keep its window focused with no dialog open")
     elif not status.get("playing"):
         warnings.append("FL is not playing, so every peak reads 0; start playback or set start_playback=true")
 
@@ -410,7 +416,7 @@ def fl_watch_peaks(args: dict) -> dict:
                 fl.sleep(wait)
     finally:
         if start_playback:
-            fl.request("transport", {"cmd": "stop"})
+            transport(fl, "stop")
 
     if len(poll_starts) > 1:
         interval_ms = (poll_starts[-1] - poll_starts[0]) / (len(poll_starts) - 1) * 1000.0

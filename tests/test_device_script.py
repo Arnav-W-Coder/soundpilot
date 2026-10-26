@@ -28,10 +28,10 @@ def dev(sim):
     return load_device_script(sim)
 
 
-def call(dev, sim, op, args=None, msg_id=42):
+def call(dev, sim, op, args=None, msg_id=42, pme_flags=sim_mod.DEFAULT_PME_FLAGS):
     """Send one request through OnSysEx; return (reply_op, reply_args)."""
     before = len(sim.sysex_out)
-    msg = FakeMsg(dev.encode(msg_id, op, args or {}))
+    msg = FakeMsg(dev.encode(msg_id, op, args or {}), pme_flags)
     dev.OnSysEx(msg)
     assert msg.handled is True
     assert len(sim.sysex_out) == before + 1, "expected exactly one reply"
@@ -43,14 +43,14 @@ def call(dev, sim, op, args=None, msg_id=42):
     return rop, rargs
 
 
-def ok(dev, sim, op, args=None):
-    rop, rargs = call(dev, sim, op, args)
+def ok(dev, sim, op, args=None, **kw):
+    rop, rargs = call(dev, sim, op, args, **kw)
     assert rop == "ok", rargs
     return rargs
 
 
-def err(dev, sim, op, args=None):
-    rop, rargs = call(dev, sim, op, args)
+def err(dev, sim, op, args=None, **kw):
+    rop, rargs = call(dev, sim, op, args, **kw)
     assert rop == "err", rargs
     assert set(rargs) == {"msg"} and isinstance(rargs["msg"], str) and rargs["msg"]
     return rargs["msg"]
@@ -85,9 +85,17 @@ def test_imports_only_fl_modules_and_no_forbidden_features():
             assert node.id not in {"open", "__import__", "exec", "eval"}, node.id
     funcs = {n.name for n in tree.body if isinstance(n, ast.FunctionDef)}
     assert "OnSysEx" in funcs
-    # Notes and CC must reach FL unhandled; no idle polling.
-    for name in ("OnIdle", "OnMidiIn", "OnMidiMsg", "OnNoteOn", "OnNoteOff", "OnControlChange"):
+    # Notes and CC must reach FL unhandled.
+    for name in ("OnMidiIn", "OnMidiMsg", "OnNoteOn", "OnNoteOff", "OnControlChange"):
         assert name not in funcs, name
+
+
+def test_on_idle_only_runs_the_transport_queue():
+    """OnIdle exists only for transport commands FL refused in OnSysEx; it must stay a no-op otherwise."""
+    tree = ast.parse(SCRIPT_PATH.read_text())
+    idle = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "OnIdle")
+    called = {n.func.id for n in ast.walk(idle) if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)}
+    assert called <= {"run_queued", "print"}, called
 
 
 # ------------------------------------------------------------------ codec ----
@@ -304,6 +312,124 @@ def test_transport_pos_ticks_set_before_play(dev, sim):
 @pytest.mark.parametrize("args", [{}, {"cmd": "rewind"}, {"cmd": "pos", "pos_ticks": -5}, {"cmd": "pos", "pos_ticks": 1.5}])
 def test_transport_rejects(dev, sim, args):
     err(dev, sim, "transport", args)
+
+
+# ------------------------- "Operation unsafe at current time" inside OnSysEx --
+
+def _transport_calls(sim):
+    return [c[:2] if c[0] == "transport.setSongPos" else c[:1] for c in sim.calls
+            if c[0] in sim_mod.TRANSPORT_SETTERS]
+
+
+def test_unsafe_transport_in_onsysex_is_queued_then_run_by_onidle(dev, sim):
+    """Real FL API 45: transport.record() inside OnSysEx raised RuntimeError('Operation unsafe at current time')."""
+    sim.unsafe_calls = set(sim_mod.TRANSPORT_SETTERS)
+    r1 = ok(dev, sim, "transport", {"cmd": "rec_on"})
+    r2 = ok(dev, sim, "transport", {"cmd": "pos", "pos_ticks": 384})
+    r3 = ok(dev, sim, "transport", {"cmd": "play"})
+    assert (r1["queued"], r2["queued"], r3["queued"]) == (1, 2, 3)
+    assert set(r3) == TRANSPORT_KEYS | {"queued"}
+    assert r3["recording"] is False and r3["playing"] is False
+    assert not sim.recording and not sim.playing and sim.pos == 0
+    assert ("unsafe", "transport.record", "OnSysEx") in sim.calls
+
+    dev.OnIdle()
+    assert sim.recording and sim.playing and sim.pos == 384
+    assert _transport_calls(sim) == [("transport.record",), ("transport.setSongPos", 384), ("transport.start",)]
+    r = ok(dev, sim, "transport", {"cmd": "pos"})
+    assert set(r) == TRANSPORT_KEYS  # nothing queued, no error: the plain section 3.3 reply
+    assert r["recording"] is True and r["playing"] is True and r["pos_ticks"] == 384
+
+
+def test_only_record_unsafe_keeps_command_order(dev, sim):
+    """setSongPos/start would be allowed, but must not overtake the queued record()."""
+    sim.unsafe_calls = {"transport.record"}
+    ok(dev, sim, "transport", {"cmd": "rec_on"})
+    assert ok(dev, sim, "transport", {"cmd": "play", "pos_ticks": 96})["queued"] == 3
+    assert _transport_calls(sim) == []
+    dev.OnIdle()
+    assert _transport_calls(sim) == [("transport.record",), ("transport.setSongPos", 96), ("transport.start",)]
+    assert sim.recording and sim.playing
+
+
+def test_partial_unsafe_queues_from_the_refused_call(dev, sim):
+    sim.unsafe_calls = {"transport.start"}
+    r = ok(dev, sim, "transport", {"cmd": "play", "pos_ticks": 192})
+    assert r["queued"] == 1 and sim.pos == 192 and not sim.playing  # setSongPos ran, start() is queued
+    dev.OnIdle()
+    assert sim.playing and len(sim.calls_named("transport.setSongPos")) == 1
+
+
+def test_event_without_pme_system_queues_without_trying(dev, sim):
+    """Like Image-Line's MackieCU: no transport call when the event lacks PME_System."""
+    r = ok(dev, sim, "transport", {"cmd": "rec_on"}, pme_flags=0b100000)  # PME_FromMIDI only
+    assert r["queued"] == 1 and not any(c[0] in ("transport.record", "unsafe") for c in sim.calls)
+    dev.OnIdle()
+    assert sim.recording and len(sim.calls_named("transport.record")) == 1
+
+
+def test_unknown_pme_flags_tries_directly(dev, sim):
+    msg = FakeMsg(dev.encode(5, "transport", {"cmd": "rec_on"}))
+    del msg.pmeFlags
+    dev.OnSysEx(msg)
+    assert sim.recording and "queued" not in dev.decode(sim.sysex_out[-1])[2]
+
+
+def test_queued_idempotence_is_checked_when_run(dev, sim):
+    """rec_on twice while queued must not toggle recording back off."""
+    sim.unsafe_calls = {"transport.record", "transport.start"}
+    for cmd in ("rec_on", "rec_on", "play", "play"):
+        ok(dev, sim, "transport", {"cmd": cmd})
+    dev.OnIdle()
+    assert sim.recording and sim.playing
+    assert len(sim.calls_named("transport.record")) == 1 and len(sim.calls_named("transport.start")) == 1
+
+
+def test_onidle_retries_while_fl_stays_unsafe_then_reports(dev, sim):
+    sim.unsafe_calls = {"transport.record"}
+    sim.unsafe_in = {"OnSysEx", "OnIdle"}  # e.g. a modal dialog is open
+    ok(dev, sim, "transport", {"cmd": "rec_on"})
+    for _ in range(dev.IDLE_RETRIES - 1):
+        dev.OnIdle()
+    assert ok(dev, sim, "transport", {"cmd": "pos"})["queued"] == 1
+    dev.OnIdle()
+    r = ok(dev, sim, "transport", {"cmd": "pos"})
+    assert "queued" not in r and not sim.recording
+    assert r["qerr"].startswith("rec_on: RuntimeError: Operation unsafe")
+    sim.unsafe_calls = set()
+    assert "qerr" not in ok(dev, sim, "transport", {"cmd": "rec_on"})  # a new command clears the report
+    assert sim.recording
+
+
+def test_onidle_recovers_when_fl_becomes_safe(dev, sim):
+    sim.unsafe_calls = {"transport.record"}
+    sim.unsafe_in = {"OnSysEx", "OnIdle"}
+    ok(dev, sim, "transport", {"cmd": "rec_on"})
+    for _ in range(5):
+        dev.OnIdle()
+    sim.unsafe_in = {"OnSysEx"}
+    dev.OnIdle()
+    assert sim.recording and set(ok(dev, sim, "transport", {"cmd": "pos"})) == TRANSPORT_KEYS
+
+
+def test_other_fl_errors_are_not_queued(dev, sim):
+    sim.raise_on = "transport.start"
+    msg = err(dev, sim, "transport", {"cmd": "play"})
+    assert "transport failed: RuntimeError: simulated failure" in msg
+    assert set(ok(dev, sim, "transport", {"cmd": "pos"})) == TRANSPORT_KEYS
+
+
+def test_transport_queue_is_capped(dev, sim):
+    sim.unsafe_calls = {"transport.record"}
+    for i in range(dev.MAX_QUEUED):
+        ok(dev, sim, "transport", {"cmd": "rec_on" if i % 2 == 0 else "rec_off"})
+    assert "queue full" in err(dev, sim, "transport", {"cmd": "rec_off"})
+    assert ok(dev, sim, "transport", {"cmd": "pos"})["queued"] == dev.MAX_QUEUED
+
+
+def test_onidle_with_empty_queue_touches_nothing(dev, sim):
+    dev.OnIdle()
+    assert sim.calls == []
 
 
 def test_channels(dev, sim):

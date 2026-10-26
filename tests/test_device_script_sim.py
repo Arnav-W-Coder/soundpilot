@@ -17,12 +17,17 @@ from pathlib import Path
 SCRIPT_PATH = Path(__file__).resolve().parents[1] / "fl_script" / "MixAssist" / "device_MixAssist.py"
 FL_MODULES = ("mixer", "transport", "channels", "general", "device", "plugins", "ui", "midi")
 _counter = itertools.count()
+UNSAFE_MSG = "Operation unsafe at current time"  # FL API 45 raised RuntimeError with this text
+# FlMidiMsg default pmeFlags: PME_System | PME_System_Safe | PME_PreviewNote | PME_FromMIDI [ST:fl_classes]
+DEFAULT_PME_FLAGS = 0b101110
+TRANSPORT_SETTERS = {"transport.record", "transport.start", "transport.stop", "transport.setSongPos"}
 
 
 class FakeMsg:
-    def __init__(self, sysex: bytes):
+    def __init__(self, sysex: bytes, pmeFlags: int = DEFAULT_PME_FLAGS):
         self.sysex = sysex
         self.handled = False
+        self.pmeFlags = pmeFlags
 
 
 class SimFL:
@@ -52,12 +57,29 @@ class SimFL:
         self.calls: list[tuple] = []
         self.sysex_out: list[bytes] = []
         self.raise_on: str | None = None
+        # Calls named here raise RuntimeError(UNSAFE_MSG) while the script runs inside a callback
+        # listed in unsafe_in, the way real FL refused transport.record() inside OnSysEx.
+        self.unsafe_calls: set[str] = set()
+        self.unsafe_in: set[str] = {"OnSysEx"}
+        self.context: str | None = None
         self.modules = self._build()
 
     def _rec(self, name, *args):
+        if name in self.unsafe_calls and self.context in self.unsafe_in:
+            self.calls.append(("unsafe", name, self.context))
+            raise RuntimeError(UNSAFE_MSG)
         self.calls.append((name, *args))
         if self.raise_on == name:
             raise RuntimeError(f"simulated failure in {name}")
+
+    def in_callback(self, name, fn):
+        def run(*args):
+            outer, self.context = self.context, name
+            try:
+                return fn(*args)
+            finally:
+                self.context = outer
+        return run
 
     def calls_named(self, name):
         return [c for c in self.calls if c[0] == name]
@@ -180,6 +202,9 @@ def load_device_script(sim: SimFL):
         spec = importlib.util.spec_from_file_location(name, SCRIPT_PATH)
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
+        for cb in ("OnSysEx", "OnIdle", "OnInit"):
+            if hasattr(mod, cb):
+                setattr(mod, cb, sim.in_callback(cb, getattr(mod, cb)))
     finally:
         for n, old in saved.items():
             if old is None:
