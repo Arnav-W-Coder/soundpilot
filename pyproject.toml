@@ -20,6 +20,8 @@ dependencies = [
   "google-genai",
   "jsonschema",
   "pyyaml",
+  "httpx",
+  "ddgs",
 ]
 
 [project.optional-dependencies]
@@ -37,4 +39,5 @@ pythonpath = ["."]
 markers = [
   "llm: needs a live LLM provider (skipped unless SOUNDPILOT_LIVE_LLM=1)",
   "realfl: needs real FL Studio (always skipped; see internal/probes.md)",
+  "web: needs the live internet (skipped unless SOUNDPILOT_LIVE_WEB=1)",
 ]

@@ -10,6 +10,7 @@ import time
 import uuid
 from dataclasses import dataclass, field
 
+from mixassist import agent_tools
 from mixassist.errors import ToolError, error_dict, is_error
 from mixassist.fl import get_fl
 from mixassist.fl.tracks import resolve_track
@@ -303,6 +304,7 @@ class TurnResult:
     writes_after_clarification: int = 0
     text_fallbacks: int = 0
     hit_call_cap: bool = False
+    agent_tool_cache: dict = field(default_factory=dict, repr=False)  # agent-only tool results, per turn
 
     def to_api(self) -> dict:
         out = {"reply": self.reply, "tool_trace": self.tool_trace, "proposals": self.proposals,
@@ -319,10 +321,10 @@ class Agent:
         self._provider = provider
         self.max_tool_calls = max_tool_calls
         self.temperature = temperature
-        self.system_prompt = system_prompt
+        self.system_prompt = system_prompt + agent_tools.prompt_rules()
         self.sessions: dict[str, Session] = {}
         self._slock = threading.Lock()
-        self.tools = function_declarations()
+        self.tools = function_declarations() + agent_tools.declarations()
         self._local = threading.local()  # per-turn LLM call count; turns of different sessions run in parallel
 
     @property
@@ -403,7 +405,7 @@ class Agent:
                 response = self._llm(prompt)
             calls = list(response.tool_calls)
             if not calls and response.text:
-                calls = parse_text_tool_calls(response.text, set(TOOL_NAMES))
+                calls = parse_text_tool_calls(response.text, set(TOOL_NAMES) | agent_tools.names())
                 if calls:
                     turn.text_fallbacks += 1
                     log.warning("model wrote %d tool call(s) as text; using text fallback parser: %s",
@@ -467,6 +469,8 @@ class Agent:
 
     def _run_call(self, call: ToolCall, session: Session, turn: TurnResult, clarification: dict | None):
         name, args = call.name, call.args if isinstance(call.args, dict) else {}
+        if name in agent_tools.names():
+            return agent_tools.run(name, args, turn.agent_tool_cache)
         if name not in TOOL_NAMES:
             turn.invented_tools.append(name)
             result = error_dict("NOT_FOUND", f"there is no tool named {name!r}", candidates=list(TOOL_NAMES))
