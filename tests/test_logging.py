@@ -31,7 +31,7 @@ def test_chat_turn_logs_start_llm_tools_proposal_and_end(fake_fl, caplog):
                        [("fl_set_track", {"track": "kick", "volume_change_db": -2})],
                        "Proposed: Kick down 2 dB."])
     with caplog.at_level(logging.INFO, logger="mixassist"):
-        Agent(llm).chat("sess-1234567890", "turn the kick down 2 dB " + "x" * 200)
+        Agent(llm, tool_replies=False).chat("sess-1234567890", "turn the kick down 2 dB " + "x" * 200)
     lines = _lines(caplog)
     start = next(line for line in lines if line.startswith("chat start: "))
     assert "turn the kick down 2 dB" in start and len(start) < 120

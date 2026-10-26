@@ -5,19 +5,20 @@ import copy
 import json
 import logging
 import os
+import re
 import threading
 import time
 import uuid
 from dataclasses import dataclass, field
 
-from mixassist import agent_tools
+from mixassist import agent_tools, progress
 from mixassist.errors import ToolError, error_dict, is_error
 from mixassist.fl import get_fl
 from mixassist.fl.tracks import resolve_track
 from mixassist.llm.base import LLMProvider, LLMResponse, ToolCall, function_declarations, parse_text_tool_calls
-from mixassist.logctx import clip, log_context
+from mixassist.logctx import clip, compact, log_context
 from mixassist.schemas import TOOL_NAMES
-from mixassist.tools import call_tool, is_write, summarize_result, validate_args
+from mixassist.tools import WRITE_TOOLS, call_tool, is_write, summarize_result, validate_args
 
 log = logging.getLogger(__name__)
 
@@ -61,12 +62,31 @@ _FIELD_WORDS = {"volume_db": "volume", "pan_pct": "pan", "stereo_width_pct": "wi
                 "eq_gain_db": "EQ gain", "eq_freq_hz": "EQ freq"}
 
 
+def _read_track_state(ref=None, index: int | None = None, need_eq: bool = False) -> dict:
+    """Fresh readback of one mixer track, shaped like an fl_get_mix_overview track (plugins not read).
+
+    Reads every track's name and levels (about total/8 SysEx round trips) plus the one track's EQ, instead of
+    the full overview's FX and EQ reads for every track (~270 round trips for 127 tracks)."""
+    from mixassist.tools import fl_tools
+
+    t0 = time.perf_counter()
+    fl = get_fl()
+    try:
+        if index is None:
+            raw = resolve_track(ref, fl_tools.read_tracks(fl))
+        else:
+            raw = fl_tools.read_track(fl, index)
+        eq = fl_tools.read_eq(fl, raw["index"]) if need_eq and fl_tools._api_level(fl) >= 35 else []
+    except ToolError:
+        raise
+    except Exception as exc:  # noqa: BLE001 - previews report FL failures like tools do
+        raise ToolError("FL_ERROR", f"reading the mixer failed: {type(exc).__name__}: {exc}")
+    log.info("preview readback of %s in %.2f s", raw["name"], time.perf_counter() - t0)
+    return fl_tools._public_track(raw, eq, [])
+
+
 def _set_track_preview(args: dict) -> dict:
-    overview = call_tool("fl_get_mix_overview", {"include_empty": True})
-    if is_error(overview):
-        e = overview["error"]
-        raise ToolError(e["code"], e["message"], e.get("candidates"), e.get("hint"))
-    track = resolve_track(args["track"], overview["tracks"])
+    track = _read_track_state(args["track"], need_eq=bool(args.get("eq_band")))
     changes = []
     if "volume_db" in args and "volume_change_db" in args:
         raise ToolError("OUT_OF_RANGE", "give volume_db or volume_change_db, not both")
@@ -115,8 +135,11 @@ def _undo_preview(args: dict) -> dict:
         entry = next((h for h in reversed(history) if not h["undone"]), None)
     if entry is None:
         raise ToolError("NOT_FOUND", "nothing to undo" if not args.get("change_id") else f"no undoable change {args['change_id']!r}")
-    overview = call_tool("fl_get_mix_overview", {"include_empty": True})
-    current = next((t for t in overview.get("tracks", []) if t["index"] == entry["index"]), None)
+    try:
+        current = _read_track_state(index=entry["index"], need_eq="eq_band" in entry["before"])
+    except ToolError as exc:
+        log.warning("undo preview readback failed: %s", exc.message)
+        current = None
     changes = []
     if current is not None:
         for key, unit in (("volume_db", "dB"), ("pan_pct", "%"), ("stereo_width_pct", "%")):
@@ -262,9 +285,28 @@ def reset_proposals() -> None:
 
 
 # ---------------------------------------------------------------- the loop
-def compact_for_model(result: dict) -> str:
+def _compact_track(track: dict) -> dict:
+    """An overview track without the defaults: flat EQ bands, false mute/solo flags and plugin slot numbers."""
+    out = {k: v for k, v in track.items() if k not in ("eq", "plugins", "muted", "solo")}
+    if track.get("muted"):
+        out["muted"] = True
+    if track.get("solo"):
+        out["solo"] = True
+    eq = [b for b in track.get("eq") or [] if abs(b.get("gain_db") or 0.0) > 1e-6]
+    if eq:
+        out["eq"] = eq
+    elif track.get("eq"):
+        out["eq"] = "flat"
+    if track.get("plugins"):
+        out["plugins"] = [p.get("name") if isinstance(p, dict) else p for p in track["plugins"]]
+    return out
+
+
+def compact_for_model(result: dict, tool: str | None = None) -> str:
     """JSON for the model: drop bulky arrays so small context windows keep the important numbers."""
     data = copy.deepcopy(result)
+    if tool == "fl_get_mix_overview" and isinstance(data.get("tracks"), list):
+        data["tracks"] = [_compact_track(t) if isinstance(t, dict) else t for t in data["tracks"]]
 
     def shrink(obj, depth=0):
         if isinstance(obj, dict):
@@ -305,6 +347,7 @@ class TurnResult:
     text_fallbacks: int = 0
     hit_call_cap: bool = False
     agent_tool_cache: dict = field(default_factory=dict, repr=False)  # agent-only tool results, per turn
+    reply_source: str = "model"  # "model", "tools" (built from tool results, no summary call) or "fastpath"
 
     def to_api(self) -> dict:
         out = {"reply": self.reply, "tool_trace": self.tool_trace, "proposals": self.proposals,
@@ -317,11 +360,16 @@ class TurnResult:
 
 class Agent:
     def __init__(self, provider: LLMProvider | None = None, max_tool_calls: int = MAX_TOOL_CALLS,
-                 temperature: float = 0.0, system_prompt: str = SYSTEM_PROMPT):
+                 temperature: float = 0.0, system_prompt: str = SYSTEM_PROMPT, tool_replies: bool | None = None,
+                 fastpath: bool | None = None):
         self._provider = provider
         self.max_tool_calls = max_tool_calls
         self.temperature = temperature
         self.system_prompt = system_prompt + agent_tools.prompt_rules()
+        # Build the reply from tool results (no summary LLM call) when a turn ends in proposals or a question.
+        self.tool_replies = _env_flag("SOUNDPILOT_TOOL_REPLIES", True) if tool_replies is None else tool_replies
+        # Turn unambiguous "turn X down N dB" / "pan X N% left" into the proposal without calling the model.
+        self.fastpath = _env_flag("SOUNDPILOT_FASTPATH", False) if fastpath is None else fastpath
         self.sessions: dict[str, Session] = {}
         self._slock = threading.Lock()
         self.tools = function_declarations() + agent_tools.declarations()
@@ -360,14 +408,14 @@ class Agent:
         log.info("chat start: %r", clip(message, 80))
         self._local.llm_calls = 0
         try:
-            turn = self._turn(session, message)
+            turn = (self._fast_turn(session, message) if self.fastpath else None) or self._turn(session, message)
         except Exception as exc:
             log.error("chat failed after %.1f s, %d LLM call(s): %s: %s", time.monotonic() - t0, self._local.llm_calls,
                       type(exc).__name__, clip(exc, 200))
             raise
-        log.info("chat end in %.1f s: %d LLM call(s), %d tool call(s), %d proposal(s), needs_clarification=%s",
-                 time.monotonic() - t0, self._local.llm_calls, len(turn.tool_trace), len(turn.proposals),
-                 turn.needs_clarification)
+        log.info("chat end in %.1f s: %d LLM call(s), %d tool call(s), %d proposal(s), needs_clarification=%s, "
+                 "reply from %s", time.monotonic() - t0, self._local.llm_calls, len(turn.tool_trace),
+                 len(turn.proposals), turn.needs_clarification, turn.reply_source)
         return turn
 
     def _llm(self, prompt: list[dict]) -> LLMResponse:
@@ -375,6 +423,8 @@ class Agent:
         self._local.llm_calls += 1
         n = self._local.llm_calls
         log.info("llm #%d start: %s %s (%d messages)", n, provider.name, provider.model, len(prompt))
+        progress.emit("llm", f"Asking Gemma ({provider.name})" + (f", step {n}" if n > 1 else ""),
+                      provider=provider.name, model=provider.model, call=n)
         t0 = time.monotonic()
         try:
             response = provider.chat(prompt, self.tools, self.temperature)
@@ -421,6 +471,7 @@ class Agent:
                 break
             session.messages.append({"role": "assistant", "content": response.text or "",
                                      "tool_calls": [{"name": c.name, "args": c.args} for c in calls]})
+            step_start = len(turn.tool_trace)
             for call in calls:
                 turn.attempted_calls.append({"tool": call.name, "args": call.args})
                 if calls_made >= self.max_tool_calls:
@@ -446,6 +497,13 @@ class Agent:
                     ambiguity = result["error"]
                 turn.tool_trace.append({"tool": call.name, "args": call.args, "result": result})
                 session.messages.append({"role": "tool", "name": call.name, "content": model_view})
+            settled = self._settled_reply(message, turn, turn.tool_trace[step_start:], clarification, ambiguity)
+            if settled:
+                final_text = settled
+                turn.reply_source = "tools"
+                session.messages.append({"role": "assistant", "content": settled})
+                log.info("reply built from the tool results; no summary LLM call")
+                break
             if turn.hit_call_cap and calls_made >= self.max_tool_calls:
                 # one last chance to answer in words; further tool calls are refused above
                 continue
@@ -482,6 +540,7 @@ class Agent:
                                     candidates=clarification.get("options") or None)
                 return json.dumps(result), result
             existing = next((p for p in turn.proposals if p["tool"] == name and p["args"] == _normalized(name, args)), None)
+            progress.emit("tool", f"Preparing a proposal ({name})", tool=name)
             try:
                 proposal = existing or create_proposal(name, args, _why(name, args, session), session.session_id)
             except ToolError as exc:
@@ -493,6 +552,7 @@ class Agent:
                       "note": "Not applied yet: the user approves it in the SoundPilot panel."}
             return json.dumps(result), result
 
+        progress.emit("tool", _TOOL_WORDS.get(name, f"Running {name}"), tool=name)
         result = call_tool(name, args)
         extra: list[dict] = []
         if name == "diagnose_complaint" and not result.get("needs_clarification"):
@@ -504,8 +564,64 @@ class Agent:
             listing = [{"proposal_id": p["proposal_id"], "summary": p["preview"]["summary"]} for p in extra]
             note = {"proposals_created": listing,
                     "note": "These changes are already proposed to the user; don't call fl_set_track again for them."}
-            return compact_for_model({**result, **note}), result
-        return compact_for_model(result), result
+            return compact_for_model({**result, **note}, name), result
+        return compact_for_model(result, name), result
+
+    def _settled_reply(self, message: str, turn: TurnResult, step: list[dict], clarification: dict | None,
+                       ambiguity: dict | None) -> str | None:
+        """The reply when the tool results already answer the turn, so the model needn't summarize them.
+
+        A turn settles on a clarification question, an ambiguous track, or (for a single request) a step
+        with no errors that leaves proposals from writes, diagnose_complaint or fl_watch_peaks, a peak report,
+        or a live playback. Anything else (questions that need prose, errors to fix) goes back to the model."""
+        if not self.tool_replies or not step:
+            return None
+        if clarification:
+            return (clarification.get("question") or "").strip() or None
+        if ambiguity and not turn.proposals:
+            options = list(ambiguity.get("candidates") or [])
+            return f"Which track do you mean: {' or '.join(options)}?" if options else None
+        if any(is_error(t["result"]) for t in step) or _multi_request(message):
+            return None
+        tools = {t["tool"] for t in turn.tool_trace}
+        if turn.proposals:
+            if not _QUESTION.search(message):
+                tools -= {"fl_get_mix_overview"}  # read on the way to a change; no question to answer about it
+            if tools <= WRITE_TOOLS | _PROPOSING_READS | {"fl_play_midi"} and all(
+                    t["tool"] != "fl_play_midi" or t["result"].get("status") == "proposed" for t in turn.tool_trace):
+                return _proposal_reply(turn)
+            return None
+        last = step[-1]
+        if tools == {"fl_watch_peaks"}:
+            return _peaks_reply(last["result"])
+        if tools == {"fl_play_midi"} and len(step) == 1 and last["result"].get("mode") == "live":
+            return _play_reply(last["result"], last["args"] if isinstance(last["args"], dict) else {})
+        return None
+
+    def _fast_turn(self, session: Session, message: str) -> TurnResult | None:
+        """SOUNDPILOT_FASTPATH: an unambiguous volume or pan command becomes the same proposal without the model."""
+        parsed = parse_fast_command(message)
+        if parsed is None:
+            return None
+        session.messages.append({"role": "user", "content": message})
+        try:
+            proposal = create_proposal("fl_set_track", parsed, _why("fl_set_track", parsed, session), session.session_id)
+        except ToolError as exc:
+            session.messages.pop()
+            log.info("fast path skipped (%s: %s); asking the model", exc.code, exc.message)
+            return None
+        result = {"status": "proposed", "proposal_id": proposal["proposal_id"], "summary": proposal["preview"]["summary"],
+                  "note": "Not applied yet: the user approves it in the SoundPilot panel."}
+        turn = TurnResult(reply="", tool_trace=[{"tool": "fl_set_track", "args": parsed, "result": result}],
+                          proposals=[proposal], needs_clarification=False,
+                          attempted_calls=[{"tool": "fl_set_track", "args": parsed}], reply_source="fastpath")
+        turn.reply = _proposal_reply(turn)
+        session.messages += [{"role": "assistant", "content": "", "tool_calls": [{"name": "fl_set_track", "args": parsed}]},
+                             {"role": "tool", "name": "fl_set_track", "content": json.dumps(result)},
+                             {"role": "assistant", "content": turn.reply}]
+        progress.emit("fastpath", "Understood without the model: " + proposal["preview"]["summary"])
+        log.info("fast path: %s -> %s", compact(parsed), proposal["preview"]["summary"])
+        return turn
 
     def _fallback_reply(self, turn: TurnResult) -> str:
         if turn.needs_clarification:
@@ -531,6 +647,123 @@ def _normalized(name: str, args: dict) -> dict:
 def _why(name: str, args: dict, session: Session) -> str:
     last_user = next((m["content"] for m in reversed(session.messages) if m["role"] == "user"), "")
     return f"You asked: \"{last_user[:120]}\"" if last_user else name
+
+
+# ------------------------------------------------------- replies from tool results
+_PROPOSING_READS = frozenset({"analyze_audio", "diagnose_complaint", "fl_watch_peaks"})
+_TOOL_WORDS = {
+    "fl_get_mix_overview": "Reading the FL mixer",
+    "fl_watch_peaks": "Watching the peak meters",
+    "analyze_audio": "Measuring the audio",
+    "diagnose_complaint": "Diagnosing the complaint",
+    "verify_fix": "Checking the fix",
+    "analyze_midi": "Analyzing the MIDI",
+    "fl_play_midi": "Playing notes in FL",
+}
+_MULTI = re.compile(r"\b(and|then|also|plus|as well)\b|;", re.I)
+_QUESTION = re.compile(r"\?|^\s*(what|how|which|why|where|who|is|are|does|do|can|could|tell me|show me|list|give me)\b",
+                       re.I)
+_PATHS = re.compile(r"(?:~|/)\S+|\S+\.(?:wav|mid|midi|flac|mp3|aiff?)\b", re.I)
+_NOTE_NAMES = ("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B")
+
+
+def _env_flag(name: str, default: bool) -> bool:
+    value = (os.environ.get(name) or "").strip().lower()
+    return default if not value else value in ("1", "true", "yes", "on")
+
+
+def _multi_request(message: str) -> bool:
+    """True when the message (file paths aside) may ask for more than one thing, so the model should finish it."""
+    return bool(_MULTI.search(_PATHS.sub(" ", message or "")))
+
+
+def _sentence(text: str) -> str:
+    text = text.strip()
+    return text if text.endswith((".", "!", "?")) else text + "."
+
+
+def _proposal_reply(turn: TurnResult) -> str:
+    reasons: list[str] = []
+    for p in turn.proposals:
+        why = (p.get("why") or "").strip()
+        if why and not why.startswith("You asked") and why != p["preview"]["summary"] and why not in reasons:
+            reasons.append(why)
+    listing = "; ".join(p["preview"]["summary"] for p in turn.proposals)
+    return " ".join([*(_sentence(r) for r in reasons), f"Proposed for your approval: {listing}."])
+
+
+def _peaks_reply(result: dict) -> str | None:
+    if is_error(result):
+        return None
+    tracks = [t for t in result.get("tracks") or [] if t.get("max_peak_dbfs") is not None]
+    clipped = [t for t in tracks if t.get("clip_count")]
+    if clipped:
+        text = "Clipping: " + "; ".join(f"{t['name']} {t['clip_count']}x (max {t['max_peak_dbfs']:+.2f} dBFS)"
+                                        for t in clipped) + "."
+    elif tracks:
+        loud = max(tracks, key=lambda t: t["max_peak_dbfs"])
+        text = (f"Nothing clipped over {result.get('polls', 0)} meter polls; the loudest was {loud['name']} at "
+                f"{loud['max_peak_dbfs']:+.2f} dBFS.")
+    else:
+        text = "No track registered a peak."
+    return " ".join([text, *(_sentence(w) for w in result.get("warnings") or [])])
+
+
+def _note_name(pitch) -> str:
+    try:
+        p = int(pitch)
+    except (TypeError, ValueError):
+        return str(pitch)
+    return f"{_NOTE_NAMES[p % 12]}{p // 12 - 1}"
+
+
+def _play_reply(result: dict, args: dict) -> str | None:
+    if is_error(result):
+        return None
+    notes = args.get("notes") if isinstance(args.get("notes"), list) else None
+    if notes:
+        names = [_note_name(n.get("pitch")) for n in notes[:16] if isinstance(n, dict)]
+        what = " ".join(names) + (" ..." if len(notes) > 16 else "")
+    else:
+        what = os.path.basename(str(args.get("path") or "")) or f"{result.get('notes_sent', 0)} notes"
+    channel = (result.get("channel") or {}).get("name") or ""
+    where = "the selected channel" if not channel or channel.startswith("(") else channel
+    text = (f"Played {what} live on {where} ({result.get('notes_sent', 0)} notes, {result.get('duration_s', 0):g} s "
+            f"at {result.get('bpm', 0):g} BPM).")
+    return " ".join([text, *(_sentence(w) for w in result.get("warnings") or [])])
+
+
+# ------------------------------------------------------------ fast path (opt-in)
+_NUM = r"\d+(?:\.\d+)?"
+_TRACK = r"(?:the\s+)?(?P<track>[a-z0-9][\w .'&()#-]*?)"
+_FAST_COMMANDS = (
+    ("change", re.compile(rf"^(?:please\s+)?(?:turn|bring|take|move)\s+{_TRACK}\s+(?P<dir>up|down)\s+(?:by\s+)?"
+                          rf"(?P<n>{_NUM})\s*db$", re.I)),
+    ("change", re.compile(rf"^(?:please\s+)?(?:turn|bring)\s+(?P<dir>up|down)\s+{_TRACK}\s+(?:by\s+)?"
+                          rf"(?P<n>{_NUM})\s*db$", re.I)),
+    ("set", re.compile(rf"^(?:please\s+)?set\s+{_TRACK}(?:\s+(?:fader|volume|level))?\s+to\s+(?:exactly\s+)?"
+                       rf"(?P<sign>[-+]?)(?P<n>{_NUM})\s*db$", re.I)),
+    ("pan", re.compile(rf"^(?:please\s+)?pan\s+{_TRACK}\s+(?:to\s+)?(?P<n>{_NUM})\s*%\s*(?:to\s+)?(?:the\s+)?"
+                       rf"(?P<side>left|right)$", re.I)),
+)
+
+
+def parse_fast_command(message: str) -> dict | None:
+    """fl_set_track args for one unambiguous volume or pan command, else None (the model handles it)."""
+    text = re.sub(r"\s+", " ", (message or "").replace("\u2212", "-")).strip().rstrip(".!")
+    if _multi_request(text):
+        return None
+    for kind, pattern in _FAST_COMMANDS:
+        m = pattern.match(text)
+        if not m:
+            continue
+        track, n = m.group("track").strip(), float(m.group("n"))
+        if kind == "change":
+            return {"track": track, "volume_change_db": n if m.group("dir").lower() == "up" else -n}
+        if kind == "set":
+            return {"track": track, "volume_db": -n if m.group("sign") == "-" else n}
+        return {"track": track, "pan_pct": -n if m.group("side").lower() == "left" else n}
+    return None
 
 
 _default_agent: Agent | None = None
