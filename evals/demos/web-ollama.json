@@ -1,0 +1,247 @@
+{
+ "meta": {
+  "demo": "web",
+  "llm": "ollama",
+  "model": "gemma4:31b-cloud",
+  "started": "2026-10-26T00:42:53.149206+00:00",
+  "web_backend": "ddgs",
+  "passed": true
+ },
+ "checks": [
+  {
+   "check": "Gemma searched the web",
+   "passed": true,
+   "detail": "[\"web_search\", \"fl_play_midi\"]"
+  },
+  {
+   "check": "at most 6 tool calls",
+   "passed": true,
+   "detail": "2"
+  },
+  {
+   "check": "reply states a key and a BPM",
+   "passed": true,
+   "detail": "key=C# major bpm=171 BPM"
+  },
+  {
+   "check": "reply cites a source",
+   "passed": true,
+   "detail": "'Blinding Lights' is in C# major at 171 BPM (Tunebat, songbpm.com). I've played a short C# major arpeggio (61, 65, 68, 72) to capture the synth riff idea."
+  },
+  {
+   "check": "stated key appears in a source text",
+   "passed": true,
+   "detail": "reply=C# major sources=[('A', '', 'maj'), ('C', '#', 'maj')]"
+  },
+  {
+   "check": "Gemma played an arpeggio live with fl_play_midi",
+   "passed": true,
+   "detail": "[{\"notes\": [{\"length_beats\": 0.5, \"pitch\": 61, \"start_beat\": 0, \"velocity\": 110}, {\"length_beats\": 0.5, \"pitch\": 65, \"start_beat\": 0.5, \"velocity\": 90}, {\"length_beats\": 0.5, \"pitch\": 68, \"start_beat\": 1, \"velocity\": 100}, {\"length_beats\": 0.5, \"pitch\": 72, \"start_beat\": 1.5, \"velocity\": 110}, {\"len"
+  },
+  {
+   "check": "all notes in C# major",
+   "passed": true,
+   "detail": "pitches=[61, 65, 68, 72, 68, 65, 61, 65] outside=[]"
+  },
+  {
+   "check": "no write proposals",
+   "passed": true,
+   "detail": "[]"
+  },
+  {
+   "check": "Gemma searched the web",
+   "passed": true,
+   "detail": "[\"web_search\"]"
+  },
+  {
+   "check": "reply says -14 LUFS",
+   "passed": true,
+   "detail": "Spotify normalizes tracks to -14 LUFS (Loudness normalization on Spotify)."
+  },
+  {
+   "check": "reply cites a source",
+   "passed": true,
+   "detail": "Spotify normalizes tracks to -14 LUFS (Loudness normalization on Spotify)."
+  },
+  {
+   "check": "no write proposals",
+   "passed": true,
+   "detail": ""
+  }
+ ],
+ "log": [
+  {
+   "request": "POST /api/chat",
+   "body": {
+    "session_id": "web-key",
+    "message": "What key and tempo is 'Blinding Lights' by The Weeknd? Then play its main synth riff idea as a short arpeggio"
+   },
+   "status": 200,
+   "seconds": 8.12,
+   "response": {
+    "reply": "'Blinding Lights' is in C# major at 171 BPM (Tunebat, songbpm.com). I've played a short C# major arpeggio (61, 65, 68, 72) to capture the synth riff idea.",
+    "tool_trace": [
+     {
+      "tool": "web_search",
+      "args": {
+       "query": "Blinding Lights The Weeknd key BPM"
+      },
+      "result": {
+       "query": "Blinding Lights The Weeknd key BPM",
+       "backend": "ddgs",
+       "results": [
+        {
+         "title": "BPM and key for Blinding Lights by The Weeknd | Tempo for ...",
+         "url": "https://songbpm.com/@the-weeknd/blinding-lights",
+         "snippet": "Blinding Lights is a song by The Weeknd with a tempo of 171 BPM. It can also be used half-time at 86 BPM. The track runs 3 minutes and 22 seconds long with a key and a mode. It has energy and is danceable with a time signature of beats per bar ."
+        },
+        {
+         "title": "Key & BPM for Blinding Lights by The Weeknd | Tunebat",
+         "url": "https://tunebat.com/Info/Blinding-Lights-The-Weeknd/0sf12qNH5qcw8qpgymFOqD",
+         "snippet": "Nov 29, 2019 \u00b7 \u201c Blinding Lights \u201d by The Weeknd is in C\u266f major at 171 BPM, with a Camelot key of 3B. The tracks below are recommended for harmonic mixing based on compatible keys, similar tempos, and other musical characteristics."
+        },
+        {
+         "title": "BPM and key for Blinding Lights by The Weeknd | Tempo for ...",
+         "url": "https://songbpm.com/@the-weeknd/blinding-lights-s70xz",
+         "snippet": "Blinding Lights is a somber song by The Weeknd with a tempo of 171 BPM. It can also be used half-time at 86 BPM. The track runs 3 minutes and 22 seconds long with a C\u266f/D\u266d key and a major mode. It has high energy and is somewhat danceable with a time signature of 4 beats per bar ."
+        },
+        {
+         "title": "Blinding Lights (The Weeknd) BPM and Key Finder | SFR BeatsThe Weeknd - Blinding Lights \u2014 BPM, Key & Camelot | ACAPELLAS.euBlinding Lights Key & BPM \u2026",
+         "url": "https://sfrbeats.com/tools/bpm/the-weeknd/blinding-lights",
+         "snippet": "Find the accurate 85 BPM, Fm key, and scale for Blinding Lights by The Weeknd. Search, analyze, and key-match millions of tracks instantly. BPM accuracy is typically \u00b11 BPM, and key detection accuracy exceeds 80% on most popular music genres. The Weeknd - Blinding Lights has a tempo of 171 BPM and \u2026"
+        }
+       ]
+      }
+     },
+     {
+      "tool": "fl_play_midi",
+      "args": {
+       "notes": [
+        {
+         "length_beats": 0.5,
+         "pitch": 61,
+         "start_beat": 0,
+         "velocity": 110
+        },
+        {
+         "length_beats": 0.5,
+         "pitch": 65,
+         "start_beat": 0.5,
+         "velocity": 90
+        },
+        {
+         "length_beats": 0.5,
+         "pitch": 68,
+         "start_beat": 1,
+         "velocity": 100
+        },
+        {
+         "length_beats": 0.5,
+         "pitch": 72,
+         "start_beat": 1.5,
+         "velocity": 110
+        },
+        {
+         "length_beats": 0.5,
+         "pitch": 68,
+         "start_beat": 2,
+         "velocity": 90
+        },
+        {
+         "length_beats": 0.5,
+         "pitch": 65,
+         "start_beat": 2.5,
+         "velocity": 100
+        },
+        {
+         "length_beats": 0.5,
+         "pitch": 61,
+         "start_beat": 3,
+         "velocity": 110
+        },
+        {
+         "length_beats": 0.5,
+         "pitch": 65,
+         "start_beat": 3.5,
+         "velocity": 90
+        }
+       ],
+       "record": false
+      },
+      "result": {
+       "mode": "live",
+       "bpm": 120.0,
+       "ppq": 96,
+       "notes_sent": 8,
+       "duration_s": 2.0,
+       "timing_lateness_ms": {
+        "mean": 0.004,
+        "p95": 0.006,
+        "max": 0.006
+       },
+       "channel": {
+        "index": null,
+        "name": "(selected channel)"
+       },
+       "warnings": [
+        "PROBE P8 (unverified): FL may only receive notes from the 'MA to FL' port while its window is focused; keep FL in front during the take."
+       ]
+      }
+     }
+    ],
+    "proposals": [],
+    "needs_clarification": false
+   },
+   "note": ""
+  },
+  {
+   "request": "POST /api/chat",
+   "body": {
+    "session_id": "web-lufs",
+    "message": "What loudness does Spotify normalize to?"
+   },
+   "status": 200,
+   "seconds": 5.68,
+   "response": {
+    "reply": "Spotify normalizes tracks to -14 LUFS (Loudness normalization on Spotify).",
+    "tool_trace": [
+     {
+      "tool": "web_search",
+      "args": {
+       "query": "Spotify loudness normalization target LUFS"
+      },
+      "result": {
+       "query": "Spotify loudness normalization target LUFS",
+       "backend": "ddgs",
+       "results": [
+        {
+         "title": "Loudness normalization on Spotify",
+         "url": "https://support.spotify.com/us/artists/article/loudness-normalization/",
+         "snippet": "How we adjust loudness We adjust tracks to -14 dB LUFS, according to the ITU 1770 standard. Loudness normalization is applied during playback. We measure loudness levels during the upload process, but we don\u2019t process or change your audio tracks before playback."
+        },
+        {
+         "title": "Spotify LUFS Analysis: How Loud Your Mix Should Be in 2026",
+         "url": "https://soundcamps.com/blog/spotify-lufs/",
+         "snippet": "Apr 7, 2026 \u00b7 Spotify measures your track's integrated LUFS (loudness over the full duration of the file) and compares it to a target level. On the default \"Normal\" playback setting, that target is -14 LUFS."
+        },
+        {
+         "title": "Streaming Loudness Targets 2026 \u2014 Spotify, Apple Music LUFS ...",
+         "url": "https://trackgleam.com/tools/streaming-loudness-targets/",
+         "snippet": "The 2026 mastering loudness reference chart: every streaming platform's LUFS and true-peak target in one table. Spotify -14 LUFS, Apple Music -16 LUFS, YouTube, Tidal, Amazon and more."
+        },
+        {
+         "title": "Mastering for Spotify: LUFS & Loudness Explained (2026)",
+         "url": "https://audiomixingmastering.com/blog/mastering-for-spotify",
+         "snippet": "Spotify turns everyone\u2019s music up or down to a similar loudness, which changes the old \u201clouder wins\u201d rule completely. Here\u2019s how loudness normalization actually works in 2026, what LUFS target to aim for, and how to get a master that stays punchy after Spotify is done with it."
+        }
+       ]
+      }
+     }
+    ],
+    "proposals": [],
+    "needs_clarification": false
+   },
+   "note": ""
+  }
+ ]
+}

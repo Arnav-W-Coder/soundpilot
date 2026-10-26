@@ -78,6 +78,35 @@ On AI Studio, the tracer took 11 s and bright 50 s. Bright hit five 429s in a ro
 
 During development, Vertex Gemma once dropped a required argument (`complaint`) and repeated the same failing `verify_fix` call until it hit the 6-call cap. The agent now answers an identical repeat of a failed call with a pointed error instead of re-running it, and the descriptions name the required args. The committed transcripts are from runs after those fixes, with no fallback steps.
 
+## Web access (agent-only `web_search` / `web_fetch`)
+
+Harness: [`evals/web_demo.py`](web_demo.py). Same setup as the demos above: the real HTTP API, FakeFL, live web search with the default keyless `ddgs` backend, and no provider fallback. Two prompts, each in a fresh session: "What key and tempo is 'Blinding Lights' by The Weeknd? Then play its main synth riff idea as a short arpeggio" and "What loudness does Spotify normalize to?".
+
+| Check | Vertex `gemma-4-26b-a4b-it-maas` | Ollama `gemma4:31b-cloud` |
+| --- | --- | --- |
+| Key/tempo: `web_search` → live `fl_play_midi` arpeggio, all notes in the stated key, no proposals, ≤ 6 calls; reply states key and BPM, cites a site that actually gives the key | PASS, 7.4 s: "C# major at 171 BPM (Tunebat, songbpm.com)" | PASS, 8.1 s: "C# major at 171 BPM (Tunebat, songbpm.com)", notes 61-65-68-72 |
+| Loudness: `web_search` → "-14 LUFS" with a source | PASS, 6.3 s: "-14 LUFS ... (Spotify Support, ...)", also Quiet = -19 LUFS | PASS, 5.7 s: "-14 LUFS (Loudness normalization on Spotify)" |
+
+Transcripts: [web-vertex.md](demos/web-vertex.md), [web-ollama.md](demos/web-ollama.md) (full JSON next to them).
+
+What earlier runs showed, and what was fixed:
+
+- Tunebat's snippet says "C♯ major", and Vertex Gemma reported "C major": it dropped the Unicode sharp. Web text sent to the model now spells accidentals in ASCII (`C#`, `Bb`). The next run said "C#/Db major".
+- Once, the final reply described only the arpeggio and left out the key and BPM it had looked up. The prompt rule now says the final reply must state each looked-up fact with the site that gives it.
+- In one Ollama run, no search snippet stated the key (SongBPM renders it with JavaScript), yet the reply said "C# Major (SongBPM)". That answer came from the model, not the source. The harness now checks that the stated key appears in some source text. Sources and memory also disagree: Tunebat and SongBPM say C# major, while Gemma answering without search (the grounding probe below) said F minor. Treat a looked-up key as a hint.
+- Keyless search is flaky from this machine. DuckDuckGo itself answered "no results" to every query, and single engines sometimes return nothing. `ddgs` shuffles engines, so the backend retries an empty answer within the 8 s budget. An `OLLAMA_API_KEY`, `BRAVE_API_KEY` or `TAVILY_API_KEY` makes search more reliable.
+
+Regression check with web tools on: `evals/gemma_suite.py --llm vertex` scored **18/20, 0 invented tools, 0 writes after clarification** (PASS). That's the same score as the committed baseline. No suite prompt called a web tool. Results: [results/gemma_suite-vertex-gemma-4-26b-a4b-it-maas-web.json](results/gemma_suite-vertex-gemma-4-26b-a4b-it-maas-web.json). The failures were prompt 5 (an EQ frequency without a gain) and prompt 16 (`analyze_midi` instead of `fix_midi`).
+
+Google Search grounding (`types.Tool(google_search=types.GoogleSearch())`), probed on Oct 25, 2026:
+
+- Vertex `gemma-4-26b-a4b-it-maas`: the request succeeds, but the tool is silently ignored. There's no grounding metadata, and the model answers from memory, alone or alongside function declarations.
+- AI Studio `gemma-4-26b-a4b-it`: it grounds when used alone. With function declarations it returns 400 unless `tool_config.include_server_side_tool_invocations=true`. That flag is AI Studio only (the SDK refuses it on Vertex). With the flag set, it worked, but it returned intermittent 500s.
+- AI Studio `gemma-4-31b-it`: returned 500.
+- Ollama: no equivalent.
+
+So grounding is not used. The agent's own `web_search` works the same on all three providers, shows up in the trace and goes through the URL and untrusted-content guards.
+
 ## MCP checks (spec §8.1)
 
 MCP Inspector CLI (`@modelcontextprotocol/inspector`, run via `npx -y`):

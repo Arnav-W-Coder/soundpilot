@@ -83,6 +83,26 @@ export SOUNDPILOT_LLM=ollama        # SOUNDPILOT_MODEL defaults to gemma4:31b-cl
 # OLLAMA_HOST defaults to http://127.0.0.1:11434
 ```
 
+### Speed and rate limits
+
+Vertex Gemma often answers `429 RESOURCE_EXHAUSTED`, and AI Studio's free tier allows 16k input tokens per minute. Retries wait as long as the server asks (RetryInfo, `Retry-After`, or "retry in N s"), up to 60 s. Without a server hint they back off 1, 2, 4, 8 and 16 s. To avoid long waits, add a fallback provider:
+
+```bash
+export SOUNDPILOT_LLM=vertex SOUNDPILOT_LLM_FALLBACK=ollama   # recommended: switch to gemma4:31b-cloud on 429s
+```
+
+| Variable | Default | Effect |
+| --- | --- | --- |
+| `SOUNDPILOT_LLM_FALLBACK` | none | Providers to switch to (in order, e.g. `ollama` or `ollama,aistudio`) when the primary stays rate limited or unreachable. The switch is logged and shown in the chat. |
+| `SOUNDPILOT_LLM_FALLBACK_AFTER_S` | `4` | With a fallback set, how many seconds the primary may spend waiting on retries before the turn moves on. |
+| `SOUNDPILOT_LLM_FALLBACK_COOLDOWN_S` | `120` | How long calls stay on the fallback before the primary is tried again. |
+| `SOUNDPILOT_THINKING` | `minimal` on AI Studio, `default` on Vertex | On AI Studio, `minimal` sends `thinking_level=MINIMAL`; otherwise Gemma 4 thinks for 50–450 tokens per call. Vertex MaaS reports no thinking, so it is left alone unless set to `minimal`. Ollama always sends `think: false`. |
+| `SOUNDPILOT_MAX_OUTPUT_TOKENS` | `2048` | Cap on generated tokens per call. It stops runaway replies; tool calls are far shorter. |
+| `SOUNDPILOT_TOOL_REPLIES` | `1` | If a turn ends with proposals, a clarification question, a peak report or a live playback, the reply is built from the tool results and the summary LLM call is skipped. Set `0` to always ask the model. |
+| `SOUNDPILOT_FASTPATH` | `0` | Set `1` to turn "turn X down N dB", "set X to N dB" and "pan X N% left" into the same pending proposal without any LLM call. Anything ambiguous goes to the model. |
+
+`.venv/bin/python -m evals.latency_bench --llm vertex --label mine` times six representative turns. It reports wall time, LLM calls, LLM time vs tool time vs retry waits, tokens, and FL round trips. Results are in [evals/report.md](evals/report.md#latency).
+
 ## Running
 
 ### Backend HTTP API (for the UI)
@@ -147,7 +167,9 @@ Run every step from a normal Terminal; the Cursor agent sandbox blocks CoreMIDI.
 
 The full contract is in the [build brief](docs/build-brief.md) (section "HTTP API"). Tool errors come back as HTTP 200 with the §3.1 body. Malformed requests get 422. LLM failures on `/api/chat` get 502 with `{"error": {"code": "LLM_ERROR", ...}}`.
 
-`GET /api/status`, `GET /api/mix`, `POST /api/chat`, `POST /api/proposals/{id}/apply`, `POST /api/proposals/{id}/discard`, `GET /api/proposals`, `POST /api/undo`, `POST /api/analyze/audio`, `POST /api/analyze/midi`, `POST /api/diagnose`, `POST /api/verify`, `POST /api/watch_peaks`, `POST /api/midi/fix`, `POST /api/midi/play`.
+`GET /api/status`, `GET /api/mix`, `POST /api/chat`, `POST /api/chat/stream`, `POST /api/proposals/{id}/apply`, `POST /api/proposals/{id}/discard`, `GET /api/proposals`, `POST /api/undo`, `POST /api/analyze/audio`, `POST /api/analyze/midi`, `POST /api/diagnose`, `POST /api/verify`, `POST /api/watch_peaks`, `POST /api/midi/fix`, `POST /api/midi/play`.
+
+`POST /api/chat/stream` takes the same body as `/api/chat` and answers with server-sent events. While the turn runs, it sends `step` events (`{"type": "llm"|"tool"|"retry"|"fallback"|"fastpath", "text": ...}`). Then it sends one `result` event with the `/api/chat` payload, or an `error` event. The UI uses it to show what the assistant is doing, including rate-limit waits.
 
 Write calls from the agent become **proposals**:
 
@@ -167,7 +189,37 @@ The agent loop lives in `mixassist/agent.py`. Read tools run automatically. Thes
 - Tool calls the model writes as text are parsed as a fallback, and the fallback is logged.
 - Schema-validation errors go back to the model so it can retry.
 - When `diagnose_complaint` asks a clarification question, the agent proposes no writes.
+- If a single request ends in proposals or a question, the reply comes from the tool results and the model isn't asked to summarize. Questions, errors and multi-part requests still go back to the model.
 - Sessions live in memory, keyed by `session_id`.
+
+## Web access (agent-only tools)
+
+The assistant can look things up: a song's key, tempo or chords ("what key and BPM is Blinding Lights?", "play the melody of …"), how a record was mixed, or platform loudness targets ("what LUFS does Spotify normalize to?"). Two read tools exist only in the agent ([`mixassist/agent_tools.py`](mixassist/agent_tools.py), [`mixassist/web/`](mixassist/web/)). The MCP server still lists exactly the 10 spec tools.
+
+| Tool | Arguments | Returns |
+| --- | --- | --- |
+| `web_search` | `query`, `max_results` 1–5 (default 4) | `{query, backend, results: [{title, url, snippet}]}` |
+| `web_fetch` | `url`, `max_chars` 200–6000 (default 3000) | `{url, title, text, truncated}`: readable text with scripts, styles, navigation, headers, footers and forms stripped |
+
+Like the other read tools, they run without approval, count toward the 6-call cap, and are cached per turn. The UI lists their sources as links under "What I measured & looked up" and turns URLs in replies into links.
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `SOUNDPILOT_WEB` | `1` | `0` removes both tools and the prompt rule |
+| `SOUNDPILOT_WEB_BACKEND` | `auto` | `ddgs` (keyless metasearch via the `ddgs` package), `ollama`, `brave`, `tavily`. `auto` picks the first key it finds, else `ddgs` |
+| `OLLAMA_API_KEY` | – | [Ollama web search API](https://docs.ollama.com/capabilities/web-search) (free account). It also powers a remote fetch fallback when a site blocks the direct fetch |
+| `BRAVE_API_KEY` / `TAVILY_API_KEY` | – | Brave Search API / Tavily |
+
+Keyless search works but is flaky: engines sometimes answer "no results" to scrapers, so the backend retries within the time budget. A keyed backend fails over to `ddgs`. Searches and fetches time out after 8 s.
+
+Safety:
+
+- Web text is untrusted. Results reach the model between `<<<UNTRUSTED_WEB_CONTENT` markers, with a note to ignore any instructions inside, and the system prompt says a page can never trigger a tool call. Writes still only become proposals that you approve.
+- `web_fetch` only fetches `http(s)` on ports 80 and 443. It refuses credentials in URLs, `localhost`, `*.local` and similar names, and any host that resolves to a private, loopback, link-local, CGNAT or reserved address, checked again on the connected socket.
+- Redirects are followed by hand (at most 4), and each hop gets the same checks. Responses are capped at 1.5 MB and must be text.
+- Search queries are stripped of absolute file paths, secret-looking tokens and the values of `*KEY*`, `*TOKEN*` and `*SECRET*` environment variables before they leave the machine.
+
+Gemini-style Google Search grounding was tested and is not used. On Vertex, Gemma ignores it. On AI Studio, it can't be combined with function calling without an AI Studio-only flag, and that combination returned intermittent 500s. Details are in [evals/report.md](evals/report.md).
 
 ## Evals
 
@@ -177,6 +229,8 @@ The agent loop lives in `mixassist/agent.py`. Read tools run automatically. Thes
 .venv/bin/python -m evals.gemma_suite --llm aistudio                # gemma-4-26b-a4b-it, GEMINI_API_KEY from .env
 .venv/bin/python -m evals.run_demo tracer --llm vertex              # end-to-end through the HTTP API
 .venv/bin/python -m evals.run_demo bright --llm ollama
+.venv/bin/python -m evals.web_demo --llm vertex                     # live web search: song key/tempo + Spotify LUFS
+SOUNDPILOT_LIVE_WEB=1 .venv/bin/pytest -q -m web                    # live smoke test of the default search backend
 ```
 
 Scores and transcripts are in [evals/report.md](evals/report.md) and [evals/demos/](evals/demos/).
@@ -189,7 +243,8 @@ mixassist/            backend package
   fl/                 FLClient, SysEx codec, FakeFL, bridge, curve tables, track-name resolution
   analysis/ complaints/ midi/
   llm/                Vertex / AI Studio / Ollama providers, Gemini-safe schema converter
-  agent.py api.py server.py
+  web/                agent-only web_search / web_fetch (search backends, SSRF-guarded fetch)
+  agent.py agent_tools.py api.py server.py
 fl_script/MixAssist/  FL device script
 fixtures/             fixture generators (+ committed MIDI)
 tests/  evals/  internal/probes.md  docs/  web/

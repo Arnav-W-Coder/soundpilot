@@ -102,6 +102,10 @@ All §3.4 quirks are mandatory (pickup ignore > 0.05 when pickupMode != 0, delay
 
 `fixtures/make.py` (Analysis): `python -m fixtures.make [--out fixtures]` writes `fixtures/audio/*.wav` (48 kHz, 24-bit, seed 1, §7) and then calls `fixtures.make_midi.make_all(out_dir / "midi")` if importable. WAVs are git-ignored; `tests/conftest.py` (Core) has a session fixture `fixtures_dir` that runs `fixtures.make` when files are missing. MIDI files (`fixtures/midi/*.mid`) are small and committed (MIDI worker).
 
+## Agent-only tools (`mixassist/agent_tools.py`)
+
+Read tools that only the agent offers the LLM; the MCP server and `TOOLS`/`TOOL_NAMES` never see them. Each is an `AgentTool(name, description, schema, fn, model_view, enabled, prompt_rule)`. `agent.py` adds `declarations()` to its function declarations, `prompt_rules()` to its system prompt and `names()` to the text-fallback parser. It dispatches with `run(name, args, cache) -> (model_view_json, result)`, which never raises and caches per turn. Today: `web_search` and `web_fetch` from `mixassist/web/` (on unless `SOUNDPILOT_WEB=0`).
+
 ## Agent / proposals (Core)
 
 The agent and `/api/*` turn write calls into Proposals (shape in build-brief.md). `preview.before` comes from a fresh `fl_get_mix_overview` read.

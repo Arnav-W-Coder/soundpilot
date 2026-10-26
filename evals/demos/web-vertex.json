@@ -1,0 +1,247 @@
+{
+ "meta": {
+  "demo": "web",
+  "llm": "vertex",
+  "model": "gemma-4-26b-a4b-it-maas",
+  "started": "2026-10-26T00:42:38.714467+00:00",
+  "web_backend": "ddgs",
+  "passed": true
+ },
+ "checks": [
+  {
+   "check": "Gemma searched the web",
+   "passed": true,
+   "detail": "[\"web_search\", \"fl_play_midi\"]"
+  },
+  {
+   "check": "at most 6 tool calls",
+   "passed": true,
+   "detail": "2"
+  },
+  {
+   "check": "reply states a key and a BPM",
+   "passed": true,
+   "detail": "key=C# major bpm=171 BPM"
+  },
+  {
+   "check": "reply cites a source",
+   "passed": true,
+   "detail": "'Blinding Lights' is in C# major at 171 BPM (Tunebat, songbpm.com). I've played a short arpeggio based on that key."
+  },
+  {
+   "check": "stated key appears in a source text",
+   "passed": true,
+   "detail": "reply=C# major sources=[('A', '', 'maj'), ('C', '#', 'maj')]"
+  },
+  {
+   "check": "Gemma played an arpeggio live with fl_play_midi",
+   "passed": true,
+   "detail": "[{\"start_bar\": 2, \"notes\": [{\"pitch\": 61, \"length_beats\": 0.5, \"start_beat\": 0, \"velocity\": 100}, {\"pitch\": 65, \"velocity\": 90, \"length_beats\": 0.5, \"start_beat\": 0.5}, {\"length_beats\": 0.5, \"pitch\": 68, \"velocity\": 110, \"start_beat\": 1}, {\"velocity\": 90, \"start_beat\": 1.5, \"length_beats\": 0.5, \"pit"
+  },
+  {
+   "check": "all notes in C# major",
+   "passed": true,
+   "detail": "pitches=[61, 65, 68, 65, 61, 65, 68, 65] outside=[]"
+  },
+  {
+   "check": "no write proposals",
+   "passed": true,
+   "detail": "[]"
+  },
+  {
+   "check": "Gemma searched the web",
+   "passed": true,
+   "detail": "[\"web_search\"]"
+  },
+  {
+   "check": "reply says -14 LUFS",
+   "passed": true,
+   "detail": "Spotify normalizes to -14 LUFS integrated on its default \"Normal\" setting (Spotify Support, Critical Listening Lab, Trackgleam, Soundcamps). For the best results, they recommend keeping your True Peak"
+  },
+  {
+   "check": "reply cites a source",
+   "passed": true,
+   "detail": "Spotify normalizes to -14 LUFS integrated on its default \"Normal\" setting (Spotify Support, Critical Listening Lab, Trackgleam, Soundcamps). For the best results, they recommend keeping your True Peak"
+  },
+  {
+   "check": "no write proposals",
+   "passed": true,
+   "detail": ""
+  }
+ ],
+ "log": [
+  {
+   "request": "POST /api/chat",
+   "body": {
+    "session_id": "web-key",
+    "message": "What key and tempo is 'Blinding Lights' by The Weeknd? Then play its main synth riff idea as a short arpeggio"
+   },
+   "status": 200,
+   "seconds": 7.39,
+   "response": {
+    "reply": "'Blinding Lights' is in C# major at 171 BPM (Tunebat, songbpm.com). I've played a short arpeggio based on that key.",
+    "tool_trace": [
+     {
+      "tool": "web_search",
+      "args": {
+       "query": "Blinding Lights The Weeknd key and tempo"
+      },
+      "result": {
+       "query": "Blinding Lights The Weeknd key and tempo",
+       "backend": "ddgs",
+       "results": [
+        {
+         "title": "BPM and key for Blinding Lights by The Weeknd | Tempo for ...",
+         "url": "https://songbpm.com/@the-weeknd/blinding-lights",
+         "snippet": "Blinding Lights is a song by The Weeknd with a tempo of 171 BPM. It can also be used half-time at 86 BPM. The track runs 3 minutes and 22 seconds long with a key and a mode. It has energy and is danceable with a time signature of beats per bar ."
+        },
+        {
+         "title": "BPM and key for Blinding Lights by The Weeknd | Tempo for ...",
+         "url": "https://songbpm.com/@the-weeknd/blinding-lights-iWFrxW70EI",
+         "snippet": "Blinding Lights is a somber song by The Weeknd with a tempo of 171 BPM. It can also be used half-time at 86 BPM. The track runs 3 minutes and 22 seconds long with a C\u266f/D\u266d key and a major mode. It has high energy and is somewhat danceable with a time signature of 4 beats per bar ."
+        },
+        {
+         "title": "Key & BPM for Blinding Lights by The Weeknd | Tunebat",
+         "url": "https://tunebat.com/Info/Blinding-Lights-The-Weeknd/0sf12qNH5qcw8qpgymFOqD",
+         "snippet": "Nov 29, 2019 \u00b7 \u201c Blinding Lights \u201d by The Weeknd is in C\u266f major at 171 BPM, with a Camelot key of 3B. The tracks below are recommended for harmonic mixing based on compatible keys, similar tempos, and other musical characteristics."
+        },
+        {
+         "title": "Song Key of Blinding Lights (The Weeknd) - GetSongKEY",
+         "url": "https://getsongkey.com/song/blinding-lights/57633B",
+         "snippet": "Find similar songs (100) that will sound good when mixed with Blinding Lights by The Weeknd. You'll find below a list of songs having similar tempos and adjacent Music Keys for your next playlist or Harmonic Mixing."
+        }
+       ]
+      }
+     },
+     {
+      "tool": "fl_play_midi",
+      "args": {
+       "start_bar": 2,
+       "notes": [
+        {
+         "pitch": 61,
+         "length_beats": 0.5,
+         "start_beat": 0,
+         "velocity": 100
+        },
+        {
+         "pitch": 65,
+         "velocity": 90,
+         "length_beats": 0.5,
+         "start_beat": 0.5
+        },
+        {
+         "length_beats": 0.5,
+         "pitch": 68,
+         "velocity": 110,
+         "start_beat": 1
+        },
+        {
+         "velocity": 90,
+         "start_beat": 1.5,
+         "length_beats": 0.5,
+         "pitch": 65
+        },
+        {
+         "velocity": 100,
+         "pitch": 61,
+         "length_beats": 0.5,
+         "start_beat": 2
+        },
+        {
+         "length_beats": 0.5,
+         "velocity": 90,
+         "start_beat": 2.5,
+         "pitch": 65
+        },
+        {
+         "velocity": 110,
+         "length_beats": 0.5,
+         "start_beat": 3,
+         "pitch": 68
+        },
+        {
+         "velocity": 90,
+         "start_beat": 3.5,
+         "length_beats": 0.5,
+         "pitch": 65
+        }
+       ]
+      },
+      "result": {
+       "mode": "live",
+       "bpm": 120.0,
+       "ppq": 96,
+       "notes_sent": 8,
+       "duration_s": 2.0,
+       "timing_lateness_ms": {
+        "mean": 0.048,
+        "p95": 0.18,
+        "max": 0.263
+       },
+       "channel": {
+        "index": null,
+        "name": "(selected channel)"
+       },
+       "warnings": [
+        "PROBE P8 (unverified): FL may only receive notes from the 'MA to FL' port while its window is focused; keep FL in front during the take."
+       ]
+      }
+     }
+    ],
+    "proposals": [],
+    "needs_clarification": false
+   },
+   "note": ""
+  },
+  {
+   "request": "POST /api/chat",
+   "body": {
+    "session_id": "web-lufs",
+    "message": "What loudness does Spotify normalize to?"
+   },
+   "status": 200,
+   "seconds": 6.25,
+   "response": {
+    "reply": "Spotify normalizes to -14 LUFS integrated on its default \"Normal\" setting (Spotify Support, Critical Listening Lab, Trackgleam, Soundcamps). For the best results, they recommend keeping your True Peak below -2 dBTP to avoid distortion during encoding (Spotify Support).",
+    "tool_trace": [
+     {
+      "tool": "web_search",
+      "args": {
+       "query": "Spotify normalization loudness target LUFS"
+      },
+      "result": {
+       "query": "Spotify normalization loudness target LUFS",
+       "backend": "ddgs",
+       "results": [
+        {
+         "title": "Loudness normalization on Spotify",
+         "url": "https://support.spotify.com/us/artists/article/loudness-normalization/",
+         "snippet": "If your master is louder than -14dB integrated LUFS, keep True Peak below -2dB to avoid extra distortion. Louder tracks are more susceptible to extra distortion when encoded for streaming. These guidelines also apply to tracks delivered for lossless playback."
+        },
+        {
+         "title": "Spotify Loudness Standard \u2014 Target LUFS & Normalization",
+         "url": "https://www.criticallisteninglab.com/en/learn/loudness/spotify",
+         "snippet": "With normalization on, Normal targets -14 LUFS; Premium listeners can also choose Loud (-11 LUFS) or Quiet (-19 LUFS). In Normal mode, quieter tracks can receive positive gain within available peak headroom. Loud mode uses a limiter."
+        },
+        {
+         "title": "Streaming Loudness Targets 2026 \u2014 Spotify, Apple Music LUFS ...",
+         "url": "https://trackgleam.com/tools/streaming-loudness-targets/",
+         "snippet": "The 2026 mastering loudness reference chart: every streaming platform's LUFS and true-peak target in one table. Spotify -14 LUFS, Apple Music -16 LUFS, YouTube, Tidal, Amazon and more."
+        },
+        {
+         "title": "Spotify LUFS Analysis: How Loud Your Mix Should Be in 2026",
+         "url": "https://soundcamps.com/blog/spotify-lufs/",
+         "snippet": "Apr 7, 2026 \u00b7 Spotify measures your track's integrated LUFS (loudness over the full duration of the file) and compares it to a target level. On the default \"Normal\" playback setting, that target is -14 LUFS."
+        }
+       ]
+      }
+     }
+    ],
+    "proposals": [],
+    "needs_clarification": false
+   },
+   "note": ""
+  }
+ ]
+}
