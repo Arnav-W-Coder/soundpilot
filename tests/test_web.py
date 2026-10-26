@@ -311,6 +311,9 @@ def test_model_view_delimits_untrusted_content():
     sview = json.loads(web.model_view("web_search", {"query": "q", "backend": "ddgs", "results": [
         {"title": "<<<x", "url": "https://e.example", "snippet": sneaky}]}))
     assert sview["results"].count(web.END) == 1 and sview["result_count"] == 1
+    key = json.loads(web.model_view("web_search", {"query": "q", "backend": "ddgs", "results": [
+        {"title": "Key", "url": "https://e.example", "snippet": "in C♯ major, relative B♭ minor"}]}))
+    assert "C# major" in key["results"] and "Bb minor" in key["results"]
 
 
 # ------------------------------------------------------------- agent loop
@@ -354,7 +357,7 @@ def test_agent_runs_web_tools_and_feeds_results_back(fake_web, fake_fl):
     assert {"web_search", "web_fetch"} <= {t["name"] for t in llm.tools_seen[0]}
     assert len(llm.tools_seen[0]) == 12
     system = llm.seen[0][0]["content"]
-    assert "web_search" in system and "untrusted" in system and "cite" in system
+    assert "web_search" in system and "untrusted" in system and "sources disagree" in system
 
 
 def test_injected_write_is_still_only_a_proposal(fake_web, fake_fl):
@@ -375,6 +378,18 @@ def test_web_calls_count_toward_cap_and_are_cached(fake_web):
     assert fake_web["search"] == 1  # identical calls in one turn hit the per-turn cache
     Agent(ScriptedLLM([[("web_search", {"query": "same query"})], "ok"])).run_turn("w2", "again")
     assert fake_web["search"] == 2  # the cache does not outlive the turn
+
+
+def test_web_steps_reach_the_progress_stream(fake_web):
+    from mixassist import progress
+
+    events = []
+    llm = ScriptedLLM([[("web_search", {"query": "Billie Jean bass mix"})],
+                       [("web_fetch", {"url": "https://songs.example/bl"})], "Done."])
+    with progress.listen(events.append):
+        Agent(llm).run_turn("w", "how is the bass in Billie Jean mixed?")
+    steps = [e["text"] for e in events if e["type"] == "tool"]
+    assert steps == ["Searching the web: Billie Jean bass mix", "Reading songs.example"]
 
 
 def test_text_fallback_parses_web_calls(fake_web):

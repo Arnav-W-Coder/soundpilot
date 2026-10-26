@@ -9,9 +9,11 @@ import logging
 import time
 from dataclasses import dataclass
 from typing import Callable
+from urllib.parse import urlsplit
 
 import jsonschema
 
+from mixassist import progress
 from mixassist.errors import ToolError, error_dict
 from mixassist.logctx import clip, compact
 
@@ -81,10 +83,19 @@ def _validate(tool: AgentTool, args) -> dict:
     return clean
 
 
+def _step_text(name: str, args: dict) -> str:
+    if name == "web_search":
+        return f"Searching the web: {clip(args.get('query', ''), 60)}"
+    if name == "web_fetch":
+        return f"Reading {urlsplit(str(args.get('url', ''))).hostname or 'a web page'}"
+    return f"Running {name}"
+
+
 def run(name: str, args, cache: dict | None = None) -> tuple[str, dict]:
     """Run one agent tool: (model_view JSON, full result). Never raises; failures are §3.1 error dicts."""
     tool = REGISTRY[name]
     log.info("tool %s start args=%s", name, compact(args if isinstance(args, dict) else {}))
+    progress.emit("tool", _step_text(name, args if isinstance(args, dict) else {}), tool=name)
     t0 = time.perf_counter()
     try:
         clean = _validate(tool, args)
