@@ -10,6 +10,7 @@ import threading
 import time
 import uuid
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from mixassist import agent_tools, progress
 from mixassist.errors import ToolError, error_dict, is_error
@@ -25,8 +26,10 @@ log = logging.getLogger(__name__)
 MAX_TOOL_CALLS = 6
 MAX_MODEL_TURNS = 8
 MAX_RESULT_CHARS = 6000
+KNOWLEDGE_DIR = Path(__file__).with_name("knowledge")
+KNOWLEDGE_FILES = ("music_theory.md", "mixing.md")
 
-SYSTEM_PROMPT = """You are SoundPilot, a mixing assistant for FL Studio. You act only through the provided tools.
+BASE_PROMPT = """You are SoundPilot, a mixing assistant for FL Studio. You act only through the provided tools.
 
 Rules:
 - Talk in units only: dB, dBFS, dBTP, LUFS, LU, Hz, beats, seconds, percent. Pan is -100 (left) .. 100 (right).
@@ -36,7 +39,17 @@ Rules:
 - If a track name is ambiguous (AMBIGUOUS_TARGET), ask which track; never guess.
 - If a tool returns an error, fix the arguments and retry once, or explain the problem.
 - Use only the argument names in each tool's schema; numbers must be numbers.
+- To play or write music, call fl_play_midi once with notes computed from the reference below, the first note at start_beat 0 (start_bar alone places a recording); live (record=false) unless the user says record. First check every pitch is in the requested key or chord and the note and repeat counts match; then name the notes.
+- For mix requests on specific tracks, follow the mixing reference below.
 - Reply in 1-3 short sentences and quote measured numbers with their units."""
+
+
+def load_knowledge() -> str:
+    """The music theory and mixing reference appended to the system prompt (package data in mixassist/knowledge)."""
+    return "\n\n".join((KNOWLEDGE_DIR / name).read_text(encoding="utf-8").strip() for name in KNOWLEDGE_FILES)
+
+
+SYSTEM_PROMPT = BASE_PROMPT + "\n\n" + load_knowledge()
 
 
 # ------------------------------------------------------------------ proposals

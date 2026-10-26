@@ -31,7 +31,7 @@ dev = ["pytest", "httpx"]
 include = ["mixassist*"]
 
 [tool.setuptools.package-data]
-mixassist = ["complaints/*.yaml"]
+mixassist = ["complaints/*.yaml", "knowledge/*.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

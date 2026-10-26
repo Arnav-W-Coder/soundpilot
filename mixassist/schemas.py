@@ -112,7 +112,8 @@ DESCRIPTIONS: dict[str, str] = {
         "volume_db (absolute level in dB, -60..5), pan_pct (-100 = hard left, 100 = hard right, 0 = centre), "
         "stereo_width_pct (-100..100), and for the built-in EQ: eq_band ('low'|'mid'|'high') with eq_gain_db "
         "(-12..12 dB; an EQ cut or boost is eq_gain_db, never volume_change_db) and/or eq_freq_hz (20..20000 Hz). "
-        "Use ONLY these argument names; numbers must be numbers. "
+        "Use ONLY these argument names; numbers must be numbers. Prefer small moves (1-3 dB) and keep kick, bass "
+        "and sub centered and mono (never widen them). "
         "Returns before/after readback and verified."
     ),
     "fl_undo": (
@@ -157,7 +158,9 @@ DESCRIPTIONS: dict[str, str] = {
     ),
     "fl_play_midi": (
         "Play a MIDI phrase on the selected FL instrument. Give EITHER path (absolute .mid path) OR notes "
-        "(list of {pitch 0..127, start_beat, length_beats, velocity}), never both. Optional channel (global "
+        "(list of {pitch 0..127, start_beat, length_beats, velocity}), never both. pitch is a MIDI note number "
+        "(C4 = 60 = middle C, which FL labels C5); start_beat and length_beats are quarter-note beats (4 per bar). "
+        "For a scale, chord, arpeggio or melody, compute every note from the key. Optional channel (global "
         "channel index). record=true records into the piano roll and needs user approval; record=false just "
         "plays it live. start_bar is the bar number where the recording starts (>= 2, default 2); set it when the "
         "user names a bar."

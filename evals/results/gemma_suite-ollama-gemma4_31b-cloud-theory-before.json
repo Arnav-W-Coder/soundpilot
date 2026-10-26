@@ -1,0 +1,476 @@
+{
+ "provider": "ollama",
+ "model": "gemma4:31b-cloud",
+ "temperature": 0.0,
+ "date": "2026-10-26T00:43:27.942535+00:00",
+ "score": 20,
+ "total": 20,
+ "invented_tools": [],
+ "writes_after_clarification": 0,
+ "text_fallbacks": 0,
+ "passed": true,
+ "rows": [
+  {
+   "id": 1,
+   "prompt": "What's on my mixer?",
+   "expected": "fl_get_mix_overview",
+   "passed": true,
+   "detail": "{\"include_empty\": false}",
+   "calls": [
+    {
+     "tool": "fl_get_mix_overview",
+     "args": {
+      "include_empty": false
+     }
+    }
+   ],
+   "reply": "Your project is at 120.0 bpm. You have 13 active tracks, including a Master with a Fruity Limiter and a Reverb Bus at -9.0 dB. Key tracks include Kick (0.0 dB), Bass (-3.0 dB with a +2.0 dB boost at 80.0 Hz), and Vocal (-1.5 dB).",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 1.0
+  },
+  {
+   "id": 2,
+   "prompt": "Turn the kick down 2 dB",
+   "expected": "fl_set_track",
+   "passed": true,
+   "detail": "{\"track\": \"Kick\", \"volume_change_db\": -2}",
+   "calls": [
+    {
+     "tool": "fl_set_track",
+     "args": {
+      "track": "Kick",
+      "volume_change_db": -2
+     }
+    }
+   ],
+   "reply": "Proposed turning the Kick down 2 dB.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 0.7
+  },
+  {
+   "id": 3,
+   "prompt": "Pan the snare 30% to the left",
+   "expected": "fl_set_track",
+   "passed": true,
+   "detail": "{\"pan_pct\": -30, \"track\": \"snare\"}",
+   "calls": [
+    {
+     "tool": "fl_set_track",
+     "args": {
+      "pan_pct": -30,
+      "track": "snare"
+     }
+    }
+   ],
+   "reply": "Proposed panning the snare to -30%.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 0.7
+  },
+  {
+   "id": 4,
+   "prompt": "Set the bass fader to exactly -6 dB",
+   "expected": "fl_set_track",
+   "passed": true,
+   "detail": "{\"track\": \"bass\", \"volume_db\": -6}",
+   "calls": [
+    {
+     "tool": "fl_set_track",
+     "args": {
+      "track": "bass",
+      "volume_db": -6
+     }
+    }
+   ],
+   "reply": "Proposed setting the bass fader to -6 dB.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 0.7
+  },
+  {
+   "id": 5,
+   "prompt": "Cut 3 dB of low end on the Bass with the built-in EQ at 120 Hz",
+   "expected": "fl_set_track",
+   "passed": true,
+   "detail": "{\"eq_band\": \"low\", \"eq_freq_hz\": 120, \"eq_gain_db\": -3, \"track\": \"Bass\"}",
+   "calls": [
+    {
+     "tool": "fl_set_track",
+     "args": {
+      "eq_band": "low",
+      "eq_freq_hz": 120,
+      "eq_gain_db": -3,
+      "track": "Bass"
+     }
+    }
+   ],
+   "reply": "Proposed cutting 3 dB at 120 Hz on the Bass low band.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 1.4
+  },
+  {
+   "id": 6,
+   "prompt": "Undo that last change",
+   "expected": "fl_undo",
+   "passed": true,
+   "detail": "{}",
+   "calls": [
+    {
+     "tool": "fl_undo",
+     "args": {}
+    }
+   ],
+   "reply": "The last change has been proposed for undo.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 0.7
+  },
+  {
+   "id": 7,
+   "prompt": "Is anything clipping? Listen for 10 seconds.",
+   "expected": "fl_watch_peaks",
+   "passed": true,
+   "detail": "{\"seconds\": 10}",
+   "calls": [
+    {
+     "tool": "fl_watch_peaks",
+     "args": {
+      "seconds": 10
+     }
+    }
+   ],
+   "reply": "Yes, the Lead Synth is clipping with a max peak of +0.98 dBFS. All other tracks are clear, with the Master peaking at -1.94 dBFS.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 0.8
+  },
+  {
+   "id": 8,
+   "prompt": "Analyze my mix at /Users/dylanvatanapradit/Downloads/.sp_theory_before/fixtures/audio/pink.wav",
+   "expected": "analyze_audio",
+   "passed": true,
+   "detail": "{\"path\": \"/Users/dylanvatanapradit/Downloads/.sp_theory_before/fixtures/audio/pink.wav\"}",
+   "calls": [
+    {
+     "tool": "analyze_audio",
+     "args": {
+      "path": "/Users/dylanvatanapradit/Downloads/.sp_theory_before/fixtures/audio/pink.wav"
+     }
+    }
+   ],
+   "reply": "The mix has an integrated loudness of -16.3 LUFS and a true peak of -6.37 dBTP. The spectral centroid is 2893.2 Hz, and the correlation mean is 0.001, indicating a very wide or potentially out-of-phase stereo image.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 1.8
+  },
+  {
+   "id": 9,
+   "prompt": "How loud is /Users/dylanvatanapradit/Downloads/.sp_theory_before/fixtures/audio/bright.wav compared with my reference /Users/dylanvatanapradit/Downloads/.sp_theory_before/fixtures/audio/pink.wav?",
+   "expected": "analyze_audio",
+   "passed": true,
+   "detail": "{\"path\": \"/Users/dylanvatanapradit/Downloads/.sp_theory_before/fixtures/audio/bright.wav\", \"reference_path\": \"/Users/dylanvatanapradit/Downloads/.sp_theory_before/fixtures/audio/pink.wav\"}",
+   "calls": [
+    {
+     "tool": "analyze_audio",
+     "args": {
+      "path": "/Users/dylanvatanapradit/Downloads/.sp_theory_before/fixtures/audio/bright.wav",
+      "reference_path": "/Users/dylanvatanapradit/Downloads/.sp_theory_before/fixtures/audio/pink.wav"
+     }
+    }
+   ],
+   "reply": "The mix is -16.3 LUFS, which is 0.0 LU different from the reference.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 1.2
+  },
+  {
+   "id": 10,
+   "prompt": "My mix /Users/dylanvatanapradit/Downloads/.sp_theory_before/fixtures/audio/bright.wav is too bright compared to my reference /Users/dylanvatanapradit/Downloads/.sp_theory_before/fixtures/audio/pink.wav.",
+   "expected": "diagnose_complaint",
+   "passed": true,
+   "detail": "{\"analysis_id\": \"6bc4881e90aa\", \"complaint\": \"too bright compared to my reference\"}",
+   "calls": [
+    {
+     "tool": "analyze_audio",
+     "args": {
+      "path": "/Users/dylanvatanapradit/Downloads/.sp_theory_before/fixtures/audio/bright.wav",
+      "reference_path": "/Users/dylanvatanapradit/Downloads/.sp_theory_before/fixtures/audio/pink.wav"
+     }
+    },
+    {
+     "tool": "diagnose_complaint",
+     "args": {
+      "analysis_id": "6bc4881e90aa",
+      "complaint": "too bright compared to my reference"
+     }
+    }
+   ],
+   "reply": "The mix is +5.4 dB too bright in the 5\u201320 kHz range compared to the reference. I have proposed a -5.4 dB cut on the master high EQ band at 8000 Hz to balance it.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 3.3
+  },
+  {
+   "id": 11,
+   "prompt": "The export at /Users/dylanvatanapradit/Downloads/.sp_theory_before/fixtures/audio/muddy.wav sounds boxy.",
+   "expected": "diagnose_complaint",
+   "passed": true,
+   "detail": "{\"analysis_id\": \"74f1665612bb\", \"complaint\": \"sounds boxy\"}",
+   "calls": [
+    {
+     "tool": "analyze_audio",
+     "args": {
+      "path": "/Users/dylanvatanapradit/Downloads/.sp_theory_before/fixtures/audio/muddy.wav"
+     }
+    },
+    {
+     "tool": "diagnose_complaint",
+     "args": {
+      "analysis_id": "74f1665612bb",
+      "complaint": "sounds boxy"
+     }
+    }
+   ],
+   "reply": "The analysis shows a build-up of +3.8 dB in the 150\u2013500 Hz range. I have proposed a -3.8 dB cut at 300 Hz on the master track to reduce the boxiness.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 1.8
+  },
+  {
+   "id": 12,
+   "prompt": "My mix at /Users/dylanvatanapradit/Downloads/.sp_theory_before/fixtures/audio/pink.wav sounds bad. Fix it.",
+   "expected": "clarify",
+   "passed": true,
+   "detail": "asked: What sounds wrong? Pick the closest option.",
+   "calls": [
+    {
+     "tool": "analyze_audio",
+     "args": {
+      "path": "/Users/dylanvatanapradit/Downloads/.sp_theory_before/fixtures/audio/pink.wav"
+     }
+    },
+    {
+     "tool": "diagnose_complaint",
+     "args": {
+      "analysis_id": "9d531deb04d8",
+      "complaint": "sounds bad"
+     }
+    }
+   ],
+   "reply": "What sounds wrong? Pick the closest option:\n- Phase (5th-percentile correlation -0.08)\n- Too bright or harsh\n- Muddy or boxy\n- Too much bass (boomy)",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": true,
+   "seconds": 1.3
+  },
+  {
+   "id": 13,
+   "prompt": "Ugh, the whole thing just sounds off. Make it better.",
+   "expected": "no_write",
+   "passed": true,
+   "detail": "no writes proposed",
+   "calls": [],
+   "reply": "I need to measure the mix to understand what is \"off.\" Please provide the absolute path to your exported mix WAV file.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 0.4
+  },
+  {
+   "id": 14,
+   "prompt": "I exported /Users/dylanvatanapradit/Downloads/.sp_theory_before/fixtures/audio/bright.wav, then fixed the brightness and re-exported to /Users/dylanvatanapradit/Downloads/.sp_theory_before/fixtures/audio/bright_fixed.wav. Did the fix work?",
+   "expected": "verify_fix",
+   "passed": true,
+   "detail": "{\"after_path\": \"/Users/dylanvatanapradit/Downloads/.sp_theory_before/fixtures/audio/bright_fixed.wav\", \"before_analysis_id\": \"62dfb3748cbd\", \"complaint\": \"too bright\"}",
+   "calls": [
+    {
+     "tool": "analyze_audio",
+     "args": {
+      "path": "/Users/dylanvatanapradit/Downloads/.sp_theory_before/fixtures/audio/bright.wav"
+     }
+    },
+    {
+     "tool": "verify_fix",
+     "args": {
+      "after_path": "/Users/dylanvatanapradit/Downloads/.sp_theory_before/fixtures/audio/bright_fixed.wav",
+      "before_analysis_id": "62dfb3748cbd",
+      "complaint": "too bright"
+     }
+    }
+   ],
+   "reply": "Yes, the fix worked. The 5\u201320 kHz level dropped by 3.36 dB, and the integrated loudness remained stable at -16.3 LUFS.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 1.8
+  },
+  {
+   "id": 15,
+   "prompt": "Does the melody in /Users/dylanvatanapradit/Downloads/.sp_theory_before/fixtures/midi/melody_c_major_3wrong.mid have any wrong notes?",
+   "expected": "analyze_midi",
+   "passed": true,
+   "detail": "{\"path\": \"/Users/dylanvatanapradit/Downloads/.sp_theory_before/fixtures/midi/melody_c_major_3wrong.mid\"}",
+   "calls": [
+    {
+     "tool": "analyze_midi",
+     "args": {
+      "path": "/Users/dylanvatanapradit/Downloads/.sp_theory_before/fixtures/midi/melody_c_major_3wrong.mid"
+     }
+    }
+   ],
+   "reply": "Yes, there are 3 notes out of key for C major: pitch 66 at beat 5.0, pitch 61 at beat 13.5, and pitch 68 at beat 20.5.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 0.9
+  },
+  {
+   "id": 16,
+   "prompt": "Fix the out-of-key notes in /Users/dylanvatanapradit/Downloads/.sp_theory_before/fixtures/midi/melody_c_major_3wrong.mid",
+   "expected": "fix_midi",
+   "passed": true,
+   "detail": "{\"fix\": \"snap_to_scale\", \"key\": \"C major\", \"path\": \"/Users/dylanvatanapradit/Downloads/.sp_theory_before/fixtures/midi/melody_c_major_3wrong.mid\"}",
+   "calls": [
+    {
+     "tool": "analyze_midi",
+     "args": {
+      "path": "/Users/dylanvatanapradit/Downloads/.sp_theory_before/fixtures/midi/melody_c_major_3wrong.mid"
+     }
+    },
+    {
+     "tool": "fix_midi",
+     "args": {
+      "fix": "snap_to_scale",
+      "key": "C major",
+      "path": "/Users/dylanvatanapradit/Downloads/.sp_theory_before/fixtures/midi/melody_c_major_3wrong.mid"
+     }
+    }
+   ],
+   "reply": "Detected 3 out-of-key notes in C major. I have proposed a fix to snap them to the scale.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 1.3
+  },
+  {
+   "id": 17,
+   "prompt": "Quantize /Users/dylanvatanapradit/Downloads/.sp_theory_before/fixtures/midi/sloppy.mid to 16th notes",
+   "expected": "fix_midi",
+   "passed": true,
+   "detail": "{\"fix\": \"quantize\", \"grid_beats\": 0.25, \"path\": \"/Users/dylanvatanapradit/Downloads/.sp_theory_before/fixtures/midi/sloppy.mid\"}",
+   "calls": [
+    {
+     "tool": "fix_midi",
+     "args": {
+      "fix": "quantize",
+      "grid_beats": 0.25,
+      "path": "/Users/dylanvatanapradit/Downloads/.sp_theory_before/fixtures/midi/sloppy.mid"
+     }
+    }
+   ],
+   "reply": "Proposed quantizing the MIDI to 16th notes (0.25 beats). Please approve the change in the SoundPilot panel.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 1.5
+  },
+  {
+   "id": 18,
+   "prompt": "/Users/dylanvatanapradit/Downloads/.sp_theory_before/fixtures/midi/robotic.mid sounds robotic and stiff, make it feel more human",
+   "expected": "fix_midi",
+   "passed": true,
+   "detail": "{\"fix\": \"humanize\", \"path\": \"/Users/dylanvatanapradit/Downloads/.sp_theory_before/fixtures/midi/robotic.mid\"}",
+   "calls": [
+    {
+     "tool": "fix_midi",
+     "args": {
+      "fix": "humanize",
+      "path": "/Users/dylanvatanapradit/Downloads/.sp_theory_before/fixtures/midi/robotic.mid"
+     }
+    }
+   ],
+   "reply": "I have proposed a humanization fix for the MIDI file to reduce the stiffness. Please approve the change in the SoundPilot panel.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 1.2
+  },
+  {
+   "id": 19,
+   "prompt": "Play /Users/dylanvatanapradit/Downloads/.sp_theory_before/fixtures/midi/scale_8.mid on my selected synth so I can hear it",
+   "expected": "fl_play_midi",
+   "passed": true,
+   "detail": "{\"path\": \"/Users/dylanvatanapradit/Downloads/.sp_theory_before/fixtures/midi/scale_8.mid\", \"record\": false}",
+   "calls": [
+    {
+     "tool": "fl_play_midi",
+     "args": {
+      "path": "/Users/dylanvatanapradit/Downloads/.sp_theory_before/fixtures/midi/scale_8.mid",
+      "record": false
+     }
+    }
+   ],
+   "reply": "Playing the MIDI file now.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 1.2
+  },
+  {
+   "id": 20,
+   "prompt": "Record /Users/dylanvatanapradit/Downloads/.sp_theory_before/fixtures/midi/scale_8.mid into the piano roll starting at bar 5",
+   "expected": "fl_play_midi",
+   "passed": true,
+   "detail": "{\"path\": \"/Users/dylanvatanapradit/Downloads/.sp_theory_before/fixtures/midi/scale_8.mid\", \"record\": true, \"start_bar\": 5}",
+   "calls": [
+    {
+     "tool": "fl_play_midi",
+     "args": {
+      "path": "/Users/dylanvatanapradit/Downloads/.sp_theory_before/fixtures/midi/scale_8.mid",
+      "record": true,
+      "start_bar": 5
+     }
+    }
+   ],
+   "reply": "Proposed recording `scale_8.mid` into the piano roll starting at bar 5.",
+   "invented": [],
+   "writes_after_clarification": 0,
+   "text_fallbacks": 0,
+   "needs_clarification": false,
+   "seconds": 1.2
+  }
+ ]
+}
