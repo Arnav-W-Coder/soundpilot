@@ -103,6 +103,83 @@ def test_live_spacing_uses_true_bpm_when_fl_reports_tempo_x1000():
     assert onsets[1] - onsets[0] == pytest.approx(4 * 60 / 130.0, abs=0.005)
 
 
+E_MAJOR_ARP_3X = [PlayNote(p, r * 2 + i * 0.5, 0.5) for r in range(3) for i, p in enumerate([64, 68, 71, 76])]
+
+
+def _note_spy(fake):
+    events = []
+    real_note = fake.note
+    fake.note = lambda s, d1, d2, t: (events.append((s, d1, t)), real_note(s, d1, d2, t))
+    return events
+
+
+def _note_lengths_s(events):
+    on_at, lengths = {}, []
+    for status, pitch, t in events:
+        if status == 0x90:
+            on_at.setdefault(pitch, []).append(t)
+        elif status == 0x80 and on_at.get(pitch):
+            lengths.append(t - on_at[pitch].pop(0))
+    return lengths
+
+
+def test_live_arpeggio_has_audible_lengths_when_fl_reports_tempo_x1000():
+    """The user's case: E major arpeggio x3 at 130 BPM; FL reports 130000. Notes must last 0.5 beat = 231 ms."""
+    fake = default_fake(bpm=130.0, ppq=PPQ, clock=VirtualClock(), tempo_x1000=True)
+    fl = FLClient(FakeTransport(fake), "fake")
+    events = _note_spy(fake)
+    out = play(fl, E_MAJOR_ARP_3X)
+    lengths = _note_lengths_s(events)
+    assert out["bpm"] == 130.0 and out["notes_sent"] == 12
+    assert len(lengths) == 12 and all(x == pytest.approx(0.5 * 60 / 130.0, abs=0.002) for x in lengths)
+    assert out["duration_s"] == pytest.approx(6 * 60 / 130.0, abs=0.001)
+    assert events[-1][2] - events[0][2] == pytest.approx(6 * 60 / 130.0, abs=0.005)
+    assert not any("shorter than" in w for w in out["warnings"])
+
+
+@pytest.mark.parametrize("raw_bpm", [130000.0, 5.0, 0.0])
+def test_implausible_tempo_is_rejected_before_any_note(raw_bpm):
+    """Without client normalization (backends started before bd21eab) 130000 BPM made every note ~0.23 ms."""
+    fake = default_fake(bpm=BPM, ppq=PPQ, clock=VirtualClock())
+    fl = FLClient(FakeTransport(fake), "fake")
+    fl._normalize_bpm = lambda reply: reply.update(bpm=raw_bpm)
+    events = _note_spy(fake)
+    with pytest.raises(ToolError) as e:
+        play(fl, E_MAJOR_ARP_3X)
+    assert e.value.code == "FL_ERROR" and "implausible tempo" in e.value.message
+    assert "device_MixAssist.py" in e.value.hint
+    assert events == [] and fake.sounding_notes == set()
+
+
+def test_tool_reports_implausible_tempo_as_error(active_fake, monkeypatch):
+    from mixassist.fl import get_fl
+    from mixassist.tools import call_tool
+
+    monkeypatch.setattr(get_fl(), "_normalize_bpm", lambda reply: reply.update(bpm=130000.0))
+    res = call_tool("fl_play_midi", {"notes": [{"pitch": 64, "start_beat": 0, "length_beats": 0.5}]})
+    assert res["error"]["code"] == "FL_ERROR" and "130000" in res["error"]["message"]
+
+
+def test_very_short_notes_warn():
+    fl, fake = client(clock=VirtualClock())
+    out = play(fl, [PlayNote(60, 0, 0.01), PlayNote(62, 1, 0.01), PlayNote(64, 2, 1.0)])
+    short = [w for w in out["warnings"] if "shorter than 10 ms" in w]
+    assert len(short) == 1 and short[0].startswith("2 of 3 notes") and "5.00 ms" in short[0]
+    assert out["notes_sent"] == 3
+
+
+def test_tool_call_is_logged_with_args_and_result(active_fake, caplog):
+    from mixassist.tools import call_tool
+
+    with caplog.at_level("INFO", logger="mixassist.tools"):
+        call_tool("fl_play_midi", {"notes": [{"pitch": 64, "start_beat": 0, "length_beats": 0.5}], "channel": 2})
+    lines = [r.getMessage() for r in caplog.records if r.name == "mixassist.tools"]
+    assert any(line.startswith("tool fl_play_midi args=") and '"pitch":64' in line and '"channel":2' in line for line in lines)
+    result_line = next(line for line in lines if line.startswith("tool fl_play_midi ->"))
+    assert '"mode":"live"' in result_line and '"notes_sent":1' in result_line and '"bpm":120.0' in result_line
+    assert '"channel":{"index":2' in result_line and '"warnings":[' in result_line
+
+
 def test_pattern_mode_warns():
     fl, fake = client(clock=VirtualClock(), loop_mode=0)
     out = play(fl, [PlayNote(60, 0, 0.5)], record=True)

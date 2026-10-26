@@ -25,6 +25,10 @@ SYNC_POLLS = 6
 SYNC_POLL_SPACING_S = 0.02
 TAIL_S = 0.05             # after the last note-off, before stop/rec_off
 MAX_TAKE_S = 600.0
+MIN_BPM, MAX_BPM = 10.0, 999.0
+# A raw getCurrentTempo() value (BPM x 1000) shrinks every note ~1000x: the channel LED blinks but
+# most instruments make no sound. Notes this short are flagged in `warnings`.
+MIN_AUDIBLE_NOTE_S = 0.010
 
 PATTERN_MODE_WARNING = (
     "FL is in pattern mode (loop mode 0): the take goes into the current pattern and the transport "
@@ -151,14 +155,25 @@ def play(fl, notes: list[PlayNote], channel: int | None = None, record: bool = F
     chan = _channel_info(fl, channel)
     tr = fl.request("transport", {"cmd": "pos"})
     bpm, ppq = float(tr["bpm"]), int(tr["ppq"])
-    if bpm <= 0 or ppq <= 0:
+    if ppq <= 0:
         raise ToolError("FL_ERROR", f"FL reported bpm={bpm}, ppq={ppq}")
+    if not MIN_BPM <= bpm <= MAX_BPM:
+        raise ToolError(
+            "FL_ERROR", f"FL reported an implausible tempo of {bpm:g} BPM (expected {MIN_BPM:g}..{MAX_BPM:g}); not playing",
+            hint="restart the SoundPilot backend and re-copy fl_script/MixAssist/device_MixAssist.py into "
+                 "FL's Settings/Hardware/MixAssist folder, then reload the script")
     s_per_beat = 60.0 / bpm
     end_beat = max(n.start_beat + n.length_beats for n in notes)
     if end_beat * s_per_beat > MAX_TAKE_S:
         raise ToolError("OUT_OF_RANGE", f"take is {end_beat * s_per_beat:.0f} s at {bpm:g} BPM; the limit is {MAX_TAKE_S:.0f} s")
 
     warnings = [FOCUS_WARNING]
+    short = [n for n in notes if n.length_beats * s_per_beat < MIN_AUDIBLE_NOTE_S]
+    if short:
+        shortest_ms = min(n.length_beats for n in short) * s_per_beat * 1000.0
+        warnings.append(
+            f"{len(short)} of {len(notes)} notes are shorter than {MIN_AUDIBLE_NOTE_S * 1000:.0f} ms at {bpm:g} BPM "
+            f"(shortest {shortest_ms:.2f} ms); FL may not sound them. Use longer length_beats.")
     loop_mode = tr.get("loop_mode")
     if loop_mode is not None and int(loop_mode) == 0:
         warnings.append(PATTERN_MODE_WARNING)
@@ -171,7 +186,7 @@ def play(fl, notes: list[PlayNote], channel: int | None = None, record: bool = F
             take.run([(t0 + beat * s_per_beat, o, p, v) for beat, o, p, v in events])
         finally:
             take.release_all()
-        return _result("live", bpm, ppq, take, chan, warnings)
+        return _result("live", bpm, ppq, take, chan, warnings, end_beat * s_per_beat)
 
     rate = ppq * bpm / 60.0
     preroll_tick = (start_bar - 2) * 4 * ppq
@@ -193,17 +208,18 @@ def play(fl, notes: list[PlayNote], channel: int | None = None, record: bool = F
         if started:
             fl.request("transport", {"cmd": "stop"})
         fl.request("transport", {"cmd": "rec_off"})
-    out = _result("record", bpm, ppq, take, chan, warnings)
+    out = _result("record", bpm, ppq, take, chan, warnings, end_beat * s_per_beat)
     out["start_bar"] = start_bar
     return out
 
 
-def _result(mode: str, bpm: float, ppq: int, take: _Take, chan: dict, warnings: list[str]) -> dict:
+def _result(mode: str, bpm: float, ppq: int, take: _Take, chan: dict, warnings: list[str], duration_s: float) -> dict:
     return {
         "mode": mode,
         "bpm": bpm,
         "ppq": ppq,
         "notes_sent": take.sent,
+        "duration_s": round(duration_s, 3),
         "timing_lateness_ms": _lateness(take.lateness),
         "channel": chan,
         "warnings": warnings,

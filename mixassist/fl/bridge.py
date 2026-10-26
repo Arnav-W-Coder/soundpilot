@@ -5,6 +5,7 @@ The server sends on "MA to FL" (FL's input, where device_MixAssist.py listens) a
 so macOS IAC ("IAC Driver MA to FL") and Windows loopMIDI ("MA to FL 1") both work.
 
 ``python -m mixassist.fl.bridge --check`` sends ``hello`` and prints the round trip (probe P1).
+``--test-note`` plays a 1 s middle C on the selected channel and prints FL's tempo.
 The other ``--probe`` modes support internal/probes.md; they print measurements and never decide
 pass/fail for you.
 """
@@ -368,6 +369,31 @@ def probe_notes(fl, transport: BridgeTransport, channel: int, record: bool = Tru
     return {"bpm": bpm, "notes": sent}
 
 
+def send_test_note(transport: BridgeTransport, pitch: int = 60, velocity: int = 100, seconds: float = 1.0,
+                   sleep=None, out=print) -> None:
+    """Note on, wait, note off on MIDI channel 1: an audibility check that needs neither Gemma nor SysEx."""
+    transport.send_short(0x90, pitch, velocity)
+    try:
+        (sleep or time.sleep)(seconds)
+    finally:
+        transport.send_short(0x80, pitch, 0)
+    out(f"sent note {pitch} (velocity {velocity}) for {seconds:g} s on MIDI channel 1 of '{transport.out_name}'")
+    out("FL plays it on the selected Channel Rack channel. If its LED blinked but you heard nothing, check that "
+        "channel's instrument and volume, its mixer track, and the master level.")
+
+
+def _report_tempo(fl, timeout: float, out=print) -> None:
+    try:
+        bpm = fl.request("transport", {"cmd": "pos"}, timeout=timeout)["bpm"]
+    except ToolError as exc:
+        out(f"tempo: not read ({exc.code}: {exc.message})")
+        return
+    out(f"tempo: FL reports {bpm:g} BPM")
+    if fl._warned_tempo_x1000:
+        out("warning: the installed device script reports BPM x 1000 and is outdated; re-copy "
+            "fl_script/MixAssist/device_MixAssist.py and restart any backend started before commit bd21eab")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m mixassist.fl.bridge", description=__doc__.splitlines()[0])
     parser.add_argument("--list", action="store_true", help="list MIDI ports and exit")
@@ -377,12 +403,18 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--channel", type=int, default=0, help="channel rack index for p8 (global, default 0)")
     parser.add_argument("--seconds", type=float, default=5.0, help="p6 duration")
     parser.add_argument("--no-record", action="store_true", help="p8: play live without recording")
+    parser.add_argument("--test-note", action="store_true",
+                        help="play one note on the selected channel (default: middle C for 1 s) and read FL's tempo")
+    parser.add_argument("--pitch", type=int, default=60, help="--test-note pitch (default 60, middle C)")
+    parser.add_argument("--note-seconds", type=float, default=1.0, help="--test-note length (default 1 s)")
     parser.add_argument("--to-port", default=DEFAULT_TO_PORT)
     parser.add_argument("--from-port", default=DEFAULT_FROM_PORT)
     parser.add_argument("--timeout", type=float, default=1.0)
     args = parser.parse_args(argv)
 
-    if args.list or not (args.check or args.probe):
+    if not 0 <= args.pitch <= 127 or not 0 < args.note_seconds <= 30:
+        parser.error("--pitch must be 0..127 and --note-seconds 0..30")
+    if args.list or not (args.check or args.probe or args.test_note):
         try:
             ports = list_ports()
         except ToolError as exc:
@@ -390,7 +422,7 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         print("MIDI inputs (server reads 'MA from FL'):", ports["inputs"] or "none")
         print("MIDI outputs (server writes 'MA to FL'):", ports["outputs"] or "none")
-        if not (args.check or args.probe):
+        if not (args.check or args.probe or args.test_note):
             return 0
 
     from mixassist.fl.client import FLClient
@@ -423,6 +455,9 @@ def main(argv: list[str] | None = None) -> int:
             probe_peaks(fl, args.seconds)
         elif probe == "p8":
             probe_notes(fl, transport, args.channel, record=not args.no_record)
+        if args.test_note:
+            send_test_note(transport, args.pitch, seconds=args.note_seconds)
+            _report_tempo(fl, args.timeout)
     except ToolError as exc:
         print(f"{exc.code}: {exc.message}", file=sys.stderr)
         if exc.hint:

@@ -3,12 +3,14 @@ from __future__ import annotations
 
 import copy
 import importlib
+import json
 import logging
+import time
 from typing import Callable
 
 import jsonschema
 
-from mixassist.errors import ToolError, error_dict
+from mixassist.errors import ToolError, error_dict, is_error
 from mixassist.schemas import SCHEMAS, TOOL_NAMES
 
 log = logging.getLogger(__name__)
@@ -184,20 +186,47 @@ def validate_args(name: str, args: dict) -> dict:
     return apply_defaults(name, args)
 
 
+LOG_CHARS = 400
+
+
+def _compact(value, limit: int = LOG_CHARS) -> str:
+    text = json.dumps(value, default=str, separators=(",", ":"))
+    return text if len(text) <= limit else text[:limit] + f"...(+{len(text) - limit} chars)"
+
+
+def summarize_result(result: dict) -> str:
+    """Scalars and small dicts in full; lists as their length (warnings and errors are kept)."""
+    if is_error(result):
+        return _compact(result["error"])
+    out = {}
+    for k, v in result.items():
+        if k == "warnings" or not isinstance(v, (list, dict)):
+            out[k] = v
+        elif isinstance(v, dict) and len(v) <= 6:
+            out[k] = v
+        else:
+            out[k] = f"<{len(v)} items>"
+    return _compact(out)
+
+
 def call_tool(name: str, args: dict | None) -> dict:
     """Validate and run one tool. Never raises: failures come back as the §3.1 error dict."""
+    log.info("tool %s args=%s", name, _compact(args or {}))
+    t0 = time.perf_counter()
     try:
         clean = validate_args(name, args or {})
         result = TOOLS[name](clean)
         if not isinstance(result, dict):
             raise ToolError("FL_ERROR", f"{name} returned {type(result).__name__}, not an object")
-        return result
     except ToolError as exc:
-        return exc.to_dict()
+        result = exc.to_dict()
     except Exception as exc:  # noqa: BLE001 - the dispatcher must never raise
         code = "FILE_ERROR" if _is_file_error(exc) else "FL_ERROR"
         log.exception("tool %s failed", name)
-        return error_dict(code, f"{name} failed: {type(exc).__name__}: {exc}")
+        result = error_dict(code, f"{name} failed: {type(exc).__name__}: {exc}")
+    (log.warning if is_error(result) else log.info)(
+        "tool %s -> %s (%.0f ms)", name, summarize_result(result), (time.perf_counter() - t0) * 1000)
+    return result
 
 
 def _is_file_error(exc: Exception) -> bool:

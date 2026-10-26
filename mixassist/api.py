@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import threading
 from contextlib import asynccontextmanager
 
@@ -19,6 +20,20 @@ from mixassist.tools import call_tool
 
 load_env()
 log = logging.getLogger("mixassist.api")
+
+
+def _setup_logging() -> None:
+    """uvicorn configures only its own loggers; without this, mixassist INFO lines (tool calls) are dropped."""
+    pkg = logging.getLogger("mixassist")
+    if pkg.handlers or logging.getLogger().handlers:
+        return
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter("%(levelname)s:     %(name)s: %(message)s"))
+    pkg.addHandler(handler)
+    pkg.setLevel(os.environ.get("SOUNDPILOT_LOG", "INFO").upper())
+
+
+_setup_logging()
 
 _llm_state: dict = {"provider": None, "model": None, "available": None, "message": "not checked yet"}
 

@@ -441,6 +441,49 @@ def test_cli_check_prints_round_trip(monkeypatch, capsys):
     assert "hello round trip:" in out and "ms" in out and "FL API 36" in out
 
 
+def _test_note_cli(monkeypatch, sim, dev):
+    respond, notes = _fl_responder(sim, dev)
+    slept = []
+    monkeypatch.setattr(bridge.time, "sleep", slept.append)
+    monkeypatch.setattr(bridge, "_load_rtmidi", lambda module=None: module or FakeRtMidi(responder=respond))
+    return notes, slept
+
+
+def test_cli_test_note_plays_one_second_middle_c(monkeypatch, capsys):
+    sim = sim_mod.SimFL()
+    sim.bpm = 130000.0
+    dev = sim_mod.load_device_script(sim)
+    notes, slept = _test_note_cli(monkeypatch, sim, dev)
+    assert bridge.main(["--test-note"]) == 0
+    assert notes == [(0x90, 60, 100), (0x80, 60, 0)]
+    assert slept == [1.0]
+    out = capsys.readouterr().out
+    assert "sent note 60 (velocity 100) for 1 s" in out and "tempo: FL reports 130 BPM" in out
+    assert "outdated" not in out
+
+
+def test_cli_test_note_flags_outdated_device_script(monkeypatch, capsys):
+    sim = sim_mod.SimFL()
+    sim.bpm = 130000.0
+    dev = sim_mod.load_device_script(sim)
+    dev._tempo_bpm = lambda: float(sim.bpm)  # device script installed before bd21eab
+    notes, _ = _test_note_cli(monkeypatch, sim, dev)
+    assert bridge.main(["--test-note", "--pitch", "64", "--note-seconds", "0.5"]) == 0
+    assert notes == [(0x90, 64, 100), (0x80, 64, 0)]
+    out = capsys.readouterr().out
+    assert "tempo: FL reports 130 BPM" in out and "outdated" in out
+
+
+def test_cli_test_note_still_plays_when_fl_does_not_answer(monkeypatch, capsys):
+    sent = []
+    monkeypatch.setattr(bridge.time, "sleep", lambda s: None)
+    rt = FakeRtMidi(responder=lambda m: sent.append(m) or [])
+    monkeypatch.setattr(bridge, "_load_rtmidi", lambda module=None: module or rt)
+    assert bridge.main(["--test-note", "--timeout", "0.05"]) == 0
+    assert [m for m in sent if m[0] != 0xF0] == [[0x90, 60, 100], [0x80, 60, 0]]
+    assert "tempo: not read (FL_TIMEOUT" in capsys.readouterr().out
+
+
 def test_cli_list(monkeypatch, capsys):
     monkeypatch.setattr(bridge, "_load_rtmidi", lambda module=None: module or FakeRtMidi())
     assert bridge.main(["--list"]) == 0

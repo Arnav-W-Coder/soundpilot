@@ -443,6 +443,7 @@ class Agent:
                 return json.dumps(result), result
             if not existing:
                 turn.proposals.append(proposal)
+                log.info("proposal %s for %s: %s", proposal["proposal_id"], name, proposal["preview"]["summary"])
             result = {"status": "proposed", "proposal_id": proposal["proposal_id"], "summary": proposal["preview"]["summary"],
                       "note": "Not applied yet: the user approves it in the SoundPilot panel."}
             return json.dumps(result), result

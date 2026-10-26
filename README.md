@@ -135,6 +135,8 @@ Run every step from a normal Terminal; the Cursor agent sandbox blocks CoreMIDI.
    .venv/bin/python -m mixassist.fl.bridge --check
    ```
 
+   To check you can hear notes without Gemma, select an instrument in the Channel Rack and run `.venv/bin/python -m mixassist.fl.bridge --test-note`. It plays middle C for 1 s and prints FL's tempo. After updating the repo, restart the backend and re-copy the device script.
+
 5. Run the probes in [internal/probes.md](internal/probes.md) and paste the measured fader and EQ tables into `mixassist/fl/curves.py`. Then start the API or MCP server with the bridge backend.
 
 `fix_midi` writes `MCP_Apply.pyscript` to `~/Documents/Image-Line/FL Studio/Settings/Piano roll scripts/`, or next to the .mid if that folder is missing. Set `SOUNDPILOT_PYSCRIPT_DIR` to override the location. To apply it in FL, open the channel's piano roll and choose Scripting > MCP Apply. After the first time in a session, press Ctrl+Alt+Y (PROBE P7).
