@@ -1,0 +1,251 @@
+{
+ "provider": "vertex",
+ "model": "gemma-4-26b-a4b-it-maas",
+ "label": "before",
+ "date": "2026-10-26T00:40:23.475716+00:00",
+ "total_s": 15.3,
+ "rows": [
+  {
+   "turn": "kick_down",
+   "prompt": "turn the kick down 2 dB",
+   "wall_s": 2.2,
+   "llm_calls": 2,
+   "llm_s": 2.18,
+   "retry_wait_s": 0.0,
+   "retries": 0,
+   "tool_s": 0.017,
+   "tool_calls": 1,
+   "fl_round_trips": 274,
+   "in_tokens": 3732,
+   "out_tokens": 48,
+   "thought_tokens": 0,
+   "calls": [
+    {
+     "s": 1.61,
+     "retry_wait_s": 0.0,
+     "in": 1823,
+     "out": 25,
+     "thought": null
+    },
+    {
+     "s": 0.57,
+     "retry_wait_s": 0.0,
+     "in": 1909,
+     "out": 23,
+     "thought": null
+    }
+   ],
+   "error": null,
+   "tools": [
+    "fl_set_track"
+   ],
+   "proposals": 1,
+   "needs_clarification": false,
+   "reply": "I have proposed lowering the Kick volume by 2 dB. Please approve this change in the SoundPilot panel.",
+   "reply_source": "model"
+  },
+  {
+   "turn": "overview",
+   "prompt": "what's on my mixer?",
+   "wall_s": 2.06,
+   "llm_calls": 2,
+   "llm_s": 2.06,
+   "retry_wait_s": 0.0,
+   "retries": 0,
+   "tool_s": 0.007,
+   "tool_calls": 1,
+   "fl_round_trips": 274,
+   "in_tokens": 6675,
+   "out_tokens": 77,
+   "thought_tokens": 0,
+   "calls": [
+    {
+     "s": 0.5,
+     "retry_wait_s": 0.0,
+     "in": 1823,
+     "out": 19,
+     "thought": null
+    },
+    {
+     "s": 1.56,
+     "retry_wait_s": 0.0,
+     "in": 4852,
+     "out": 58,
+     "thought": null
+    }
+   ],
+   "error": null,
+   "tools": [
+    "fl_get_mix_overview"
+   ],
+   "proposals": 0,
+   "needs_clarification": false,
+   "reply": "Your mixer is set to 120.0 BPM and contains 18 tracks, including Master, Kick, Snare, Clap, Hat Open, Hat Closed, Bass, Sub, Lead Synth, Pad, Vocal, FX, Reverb Bus, and several empty inserts.",
+   "reply_source": "model"
+  },
+  {
+   "turn": "pan_hats",
+   "prompt": "pan the hats 30% left",
+   "wall_s": 1.75,
+   "llm_calls": 2,
+   "llm_s": 1.74,
+   "retry_wait_s": 0.0,
+   "retries": 0,
+   "tool_s": 0.007,
+   "tool_calls": 1,
+   "fl_round_trips": 274,
+   "in_tokens": 3721,
+   "out_tokens": 65,
+   "thought_tokens": 0,
+   "calls": [
+    {
+     "s": 0.6,
+     "retry_wait_s": 0.0,
+     "in": 1824,
+     "out": 25,
+     "thought": null
+    },
+    {
+     "s": 1.14,
+     "retry_wait_s": 0.0,
+     "in": 1897,
+     "out": 40,
+     "thought": null
+    }
+   ],
+   "error": null,
+   "tools": [
+    "fl_set_track"
+   ],
+   "proposals": 0,
+   "needs_clarification": false,
+   "reply": "I couldn't find a track named 'hats'. Could you please tell me the exact name of the track or call `fl_get_mix_overview` to see the list?",
+   "reply_source": "model"
+  },
+  {
+   "turn": "bright",
+   "prompt": "analyze /private/tmp/sp_latency_before/fixtures/audio/bright.wav against /private/tmp/sp_latency_before/fixtures/audio/pink.wav, it's too bright",
+   "wall_s": 4.23,
+   "llm_calls": 3,
+   "llm_s": 2.81,
+   "retry_wait_s": 0.0,
+   "retries": 0,
+   "tool_s": 1.426,
+   "tool_calls": 3,
+   "fl_round_trips": 274,
+   "in_tokens": 6755,
+   "out_tokens": 144,
+   "thought_tokens": 0,
+   "calls": [
+    {
+     "s": 1.06,
+     "retry_wait_s": 0.0,
+     "in": 1860,
+     "out": 57,
+     "thought": null
+    },
+    {
+     "s": 0.86,
+     "retry_wait_s": 0.0,
+     "in": 2302,
+     "out": 38,
+     "thought": null
+    },
+    {
+     "s": 0.89,
+     "retry_wait_s": 0.0,
+     "in": 2593,
+     "out": 49,
+     "thought": null
+    }
+   ],
+   "error": null,
+   "tools": [
+    "analyze_audio",
+    "diagnose_complaint"
+   ],
+   "proposals": 1,
+   "needs_clarification": false,
+   "reply": "The mix is indeed bright, with +5.4 dB at 5\u201320 kHz compared to the reference. I propose cutting the high EQ band on the Master by 5.4 dB at 8000 Hz.",
+   "reply_source": "model"
+  },
+  {
+   "turn": "arpeggio",
+   "prompt": "play an E major arpeggio",
+   "wall_s": 3.75,
+   "llm_calls": 2,
+   "llm_s": 3.73,
+   "retry_wait_s": 0.0,
+   "retries": 0,
+   "tool_s": 0.019,
+   "tool_calls": 1,
+   "fl_round_trips": 1,
+   "in_tokens": 3926,
+   "out_tokens": 200,
+   "thought_tokens": 0,
+   "calls": [
+    {
+     "s": 2.84,
+     "retry_wait_s": 0.0,
+     "in": 1823,
+     "out": 168,
+     "thought": null
+    },
+    {
+     "s": 0.89,
+     "retry_wait_s": 0.0,
+     "in": 2103,
+     "out": 32,
+     "thought": null
+    }
+   ],
+   "error": null,
+   "tools": [
+    "fl_play_midi"
+   ],
+   "proposals": 0,
+   "needs_clarification": false,
+   "reply": "I have sent the E major arpeggio notes to your selected channel. Let me know if you would like me to record them or adjust the velocity.",
+   "reply_source": "model"
+  },
+  {
+   "turn": "clipping",
+   "prompt": "is anything clipping?",
+   "wall_s": 1.33,
+   "llm_calls": 2,
+   "llm_s": 1.23,
+   "retry_wait_s": 0.0,
+   "retries": 0,
+   "tool_s": 0.092,
+   "tool_calls": 2,
+   "fl_round_trips": 2698,
+   "in_tokens": 4162,
+   "out_tokens": 62,
+   "thought_tokens": 0,
+   "calls": [
+    {
+     "s": 0.41,
+     "retry_wait_s": 0.0,
+     "in": 1820,
+     "out": 16,
+     "thought": null
+    },
+    {
+     "s": 0.82,
+     "retry_wait_s": 0.0,
+     "in": 2342,
+     "out": 46,
+     "thought": null
+    }
+   ],
+   "error": null,
+   "tools": [
+    "fl_watch_peaks"
+   ],
+   "proposals": 1,
+   "needs_clarification": false,
+   "reply": "Yes, the Lead Synth (track 8) is clipping with a max peak of 0.98 dBFS. I suggest turning it down by 7 dB to bring the peak closer to -6 dBFS.",
+   "reply_source": "model"
+  }
+ ]
+}
