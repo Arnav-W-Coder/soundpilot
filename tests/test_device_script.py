@@ -354,6 +354,19 @@ def test_foreign_sysex_is_left_unhandled(dev, sim):
     assert msg.handled is False and sim.sysex_out == []
 
 
+def test_missing_sysex_is_left_unhandled(dev, sim):
+    msg = FakeMsg(None)
+    dev.OnSysEx(msg)
+    assert msg.handled is False and sim.sysex_out == []
+
+
+@pytest.mark.parametrize("op", ["ok", "err"])
+def test_echoed_reply_does_not_create_feedback(dev, sim, op):
+    msg = FakeMsg(dev.encode(42, op, {"msg": "echo"}))
+    dev.OnSysEx(msg)
+    assert msg.handled is True and sim.sysex_out == []
+
+
 # --------------------------------------------------------- 1024-byte cap ----
 
 def test_pad_reply_exact_sizes(dev, sim):

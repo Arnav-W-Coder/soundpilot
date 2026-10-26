@@ -453,6 +453,10 @@ def handle_frame(data):
         if msg_id is None:
             return None
         return _err(msg_id, "bad frame: %s" % e)
+    # A misrouted IAC output can echo our replies back to this input.
+    # Never answer a reply: doing so creates an endless error-message loop.
+    if op in ("ok", "err"):
+        return None
     handler = OPS.get(op)
     if handler is None:
         return _err(msg_id, "unknown op %s" % op)
@@ -487,6 +491,8 @@ def OnDeInit():
 
 
 def OnSysEx(msg):
+    if msg.sysex is None:
+        return
     data = bytes(msg.sysex)
     if not is_ours(data):
         return
